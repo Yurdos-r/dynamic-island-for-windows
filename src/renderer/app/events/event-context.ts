@@ -1,0 +1,77 @@
+import type { ClipboardItem, ClipboardSnapshot, PrivacySnapshot, SettingsPage, TrackState } from "../state";
+
+export interface RendererEventContext {
+  app: HTMLElement;
+  island?: Window["island"];
+  suppressNextClick: boolean;
+  mode: IslandMode;
+  settingsPage: SettingsPage;
+  systemMonitorEnabled: boolean;
+  privacyState: PrivacySnapshot;
+  systemMediaActive: boolean;
+  clipboardSnapshot: ClipboardSnapshot;
+  clipboardAcceptedItem: ClipboardItem | undefined;
+  clipboardDeletePointerId: number | undefined;
+  settingsLongPressPointerId: number | undefined;
+  draggingProgress: boolean;
+  pendingSeekSeconds: number | undefined;
+  progressSeconds: number;
+  track: TrackState;
+  playing: boolean;
+  lastPlaybackSyncTime: number;
+  setSettingsPage(page: SettingsPage): void;
+  isGlassStyle(value: unknown): value is GlassStyle;
+  setGlassStyle(style: GlassStyle): void;
+  isGlassIntensity(value: unknown): value is GlassIntensity;
+  setGlassIntensity(intensity: GlassIntensity): void;
+  isLayout(value: unknown): value is IslandLayout;
+  setLayout(layout: IslandLayout): void;
+  setSystemMonitorEnabled(enabled: boolean): void;
+  closeSettings(): void;
+  closeSystemCard(): void;
+  togglePrivacyDetail(): void;
+  openClipboardCard(): void;
+  acceptClipboardPrompt(restoreAfterAccept?: boolean): Promise<void>;
+  rejectClipboardPrompt(): void;
+  canUseClipboardCard(): boolean;
+  getPendingClipboardItem(): ClipboardItem | undefined;
+  clearAcceptedClipboardSurface(): void;
+  setMode(mode: IslandMode, resizeWindow?: boolean): void;
+  getClipboardFallbackMode(): IslandMode;
+  closeClipboardDeleteDialog(): void;
+  confirmClipboardDelete(): void;
+  getAcceptedClipboardItem(): ClipboardItem | undefined;
+  copyClipboardText(text: string): Promise<void>;
+  hasClipboardItems(): boolean;
+  isIdleSystemActive(): boolean;
+  openSystemCard(): void;
+  togglePlay(): void;
+  skipTrack(action: "previous-track" | "next-track"): void;
+  toggleFavorite(): Promise<void>;
+  isCardMode(mode?: IslandMode): boolean;
+  getAvailableCardModes(): IslandMode[];
+  switchCardPage(direction: number): boolean;
+  collapsePrivacyDetail(): void;
+  scheduleSettingsLongPress(pointerId: number): void;
+  scheduleClipboardItemDelete(itemId: string, pointerId: number): void;
+  getProgressSecondsFromPointer(event: PointerEvent, progressTrack: HTMLElement): number;
+  setRendererInteracting(interacting: boolean): Promise<void>;
+  setProgressPreview(seconds: number): void;
+  queueSync(): void;
+  clearClipboardDeleteTimer(): void;
+  clearSettingsLongPress(): void;
+  commitProgress(seconds: number): Promise<unknown>;
+  setProgress(seconds: number, syncSystem?: boolean): void;
+}
+
+export interface IslandApiListenerContext {
+  app: HTMLElement;
+  island?: Window["island"];
+  onModeRequest(mode: IslandMode): void;
+  onMediaUpdate(snapshot: MediaSnapshot): void;
+  onPrivacyUpdate(snapshot: PrivacySnapshot): void;
+  onClipboardUpdate(snapshot: ClipboardSnapshot): void;
+  onSystemUpdate(snapshot: SystemSnapshot): void;
+  onLayoutChanged(settings: UiSettings): void;
+  onPlaybackTick(): void;
+}
