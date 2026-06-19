@@ -25,8 +25,11 @@ const {
 const { createWindowFader } = require("./fade-controller");
 const { createHitTargetManager } = require("./hit-target-manager");
 const { createMainHoverController, createSystemHoverController } = require("./hover-controller");
+const { createLayoutTaskbarPolicy } = require("./layout-taskbar-policy");
+const { createStageBoundsController } = require("./stage-bounds-controller");
 const { createSystemWindowVisibilityManager } = require("./system-window-visibility");
 const { configureIslandBrowserWindow, createIslandBrowserWindow } = require("./window-factory");
+const { registerIslandWindowLifecycle } = require("./window-lifecycle");
 
 function createIslandWindowManager(options = {}) {
   const logStartup = options.logStartup || (() => {});
@@ -211,103 +214,19 @@ function getSystemWindowHeightForMode(mode = systemCurrentMode) {
 }
 
 function applyStageWindowBounds(windowHeight = currentWindowHeight, options = {}) {
-  if (!mainWindow || mainWindow.isDestroyed()) {
-    return;
-  }
-
-  const nextHeight = Math.round(
-    Math.min(STAGE_SIZE.height, Math.max(MIN_ANIMATION_WINDOW_HEIGHT, Number(windowHeight) || MIN_ANIMATION_WINDOW_HEIGHT))
-  );
-  const position = getStagePosition(nextHeight, options.logPosition !== false);
-  const currentBounds = mainWindow.getBounds();
-  currentWindowHeight = nextHeight;
-
-  if (
-    currentBounds.x !== position.x ||
-    currentBounds.y !== position.y ||
-    currentBounds.width !== stageWidth ||
-    currentBounds.height !== nextHeight
-  ) {
-    mainWindow.setBounds({
-      ...position,
-      width: stageWidth,
-      height: nextHeight
-    });
-  }
-
-  updateNativeHitShape();
-  if (options.raise !== false) {
-    raiseWindowForPointer(true);
-  }
+  mainStageBounds.applyBounds(windowHeight, options);
 }
 
 function applySystemStageWindowBounds(windowHeight = systemWindowHeight, options = {}) {
-  if (!systemWindow || systemWindow.isDestroyed()) {
-    return;
-  }
-
-  const nextHeight = Math.round(
-    Math.min(STAGE_SIZE.height, Math.max(MIN_ANIMATION_WINDOW_HEIGHT, Number(windowHeight) || MIN_ANIMATION_WINDOW_HEIGHT))
-  );
-  const position = getSystemStagePosition(nextHeight, options.logPosition !== false);
-  const currentBounds = systemWindow.getBounds();
-  systemWindowHeight = nextHeight;
-
-  if (
-    currentBounds.x !== position.x ||
-    currentBounds.y !== position.y ||
-    currentBounds.width !== systemStageWidth ||
-    currentBounds.height !== nextHeight
-  ) {
-    systemWindow.setBounds({
-      ...position,
-      width: systemStageWidth,
-      height: nextHeight
-    });
-  }
-
-  updateSystemNativeHitShape();
-  if (options.raise !== false) {
-    raiseSystemWindowForPointer(true);
-  }
+  systemStageBounds.applyBounds(windowHeight, options);
 }
 
 function scheduleStageWindowForMode(previousMode, nextMode) {
-  const previousHeight = Math.max(currentWindowHeight, getWindowHeightForMode(previousMode));
-  const nextHeight = getWindowHeightForMode(nextMode);
-
-  if (nextHeight === currentWindowHeight) {
-    updateNativeHitShape();
-    raiseWindowForPointer(true);
-    return;
-  }
-
-  if (nextHeight >= previousHeight) {
-    applyStageWindowBounds(nextHeight);
-    return;
-  }
-
-  updateNativeHitShape();
-  raiseWindowForPointer(true);
+  mainStageBounds.scheduleForMode(previousMode, nextMode);
 }
 
 function scheduleSystemStageWindowForMode(previousMode, nextMode) {
-  const previousHeight = Math.max(systemWindowHeight, getSystemWindowHeightForMode(previousMode));
-  const nextHeight = getSystemWindowHeightForMode(nextMode);
-
-  if (nextHeight === systemWindowHeight) {
-    updateSystemNativeHitShape();
-    raiseSystemWindowForPointer(true);
-    return;
-  }
-
-  if (nextHeight >= previousHeight) {
-    applySystemStageWindowBounds(nextHeight);
-    return;
-  }
-
-  updateSystemNativeHitShape();
-  raiseSystemWindowForPointer(true);
+  systemStageBounds.scheduleForMode(previousMode, nextMode);
 }
 
 function updateNativeHitShape() {
@@ -481,37 +400,11 @@ function resizeSystemIsland(mode) {
 }
 
 function repositionStageWindow() {
-  if (!mainWindow || mainWindow.isDestroyed()) {
-    return;
-  }
-
-  const position = getStagePosition();
-  mainWindow.setBounds({
-    ...position,
-    width: stageWidth,
-    height: currentWindowHeight
-  });
-  updateNativeHitShape();
-  resizeIsland(currentMode);
+  mainStageBounds.reposition();
 }
 
 function repositionSystemStageWindow() {
-  if (!systemWindow || systemWindow.isDestroyed()) {
-    return;
-  }
-
-  const position = getSystemStagePosition();
-  // 已 park（隐藏）的窗口：保持移出屏幕，仅同步尺寸与命中区，绝不移回屏幕内。
-  // 这样任务栏轮询触发的周期性 repositionAllStageWindows 不会把隐藏的系统窗拽回来。
-  const y = systemWindowVisibility.resolveY(position.y);
-  systemWindow.setBounds({
-    x: position.x,
-    y,
-    width: systemStageWidth,
-    height: systemWindowHeight
-  });
-  updateSystemNativeHitShape();
-  resizeSystemIsland(systemCurrentMode);
+  systemStageBounds.reposition();
 }
 
 function repositionAllStageWindows() {
@@ -582,31 +475,13 @@ function restoreSystemWindowHitState() {
 // 彻底移出 z-order，这样全屏应用上方不会再残留胶囊。未 ready 的窗口只置状态，
 // 由 renderer-ready 流程按 taskbarVisible 决定是否 show。
 function applyTaskbarVisibility(visible) {
-  const nextVisible = visible !== false;
-  if (nextVisible === taskbarVisible) {
-    return;
-  }
-
-  taskbarVisible = nextVisible;
-  logStartup("taskbar-visibility", { visible: taskbarVisible });
-
-  if (taskbarVisible) {
-    if (rendererReady) {
-      showAndFadeIn(mainWindow, raiseWindowForPointer);
-    }
-    if (systemRendererReady && systemWindowShouldShow()) {
-      showSystemWindow();
-    }
-  } else {
-    fadeOutAndHide(mainWindow);
-    hideSystemWindow();
-  }
+  layoutTaskbarPolicy.applyTaskbarVisibility(visible);
 }
 
 // 系统窗口（右下独立胶囊）仅在经典布局且系统监控开启时显示。顶部居中布局下系统监控
 // 并入主窗口，独立系统窗口隐藏；监控关闭时两布局都不显示它。
 function systemWindowShouldShow() {
-  return layout === "classic" && systemMonitorEnabled;
+  return layoutTaskbarPolicy.systemWindowShouldShow();
 }
 
 // 系统监控进程仅在开启时运行（两布局通用：经典喂系统窗口、顶部居中喂主窗口）。
@@ -642,56 +517,20 @@ function hideSystemWindow() {
 }
 
 function applyLayoutToWindows() {
-  repositionStageWindow();
-
-  if (systemWindow && !systemWindow.isDestroyed()) {
-    if (systemWindowShouldShow() && taskbarVisible) {
-      showSystemWindow();
-    } else {
-      hideSystemWindow();
-    }
-  }
+  layoutTaskbarPolicy.applyLayoutToWindows();
 }
 
 // 向两个 renderer 广播最新 UI 设置，让 main.ts 同步 data-layout / 内嵌系统卡显隐。
 function broadcastUiSettings() {
-  const payload = { layout, systemMonitorEnabled };
-  if (mainWindow && !mainWindow.isDestroyed() && rendererReady) {
-    mainWindow.webContents.send(IPC_CHANNELS.layoutChanged, payload);
-  }
-  if (systemWindow && !systemWindow.isDestroyed() && systemRendererReady) {
-    systemWindow.webContents.send(IPC_CHANNELS.layoutChanged, payload);
-  }
+  layoutTaskbarPolicy.broadcastUiSettings();
 }
 
 function applyLayout(next) {
-  const value = VALID_LAYOUTS.has(next) ? next : "classic";
-  if (value === layout) {
-    return layout;
-  }
-
-  layout = value;
-  writeUiSettings({ layout });
-  logStartup("apply-layout", { layout });
-  applyLayoutToWindows();
-  sendAvoidScale();
-  broadcastUiSettings();
-  return layout;
+  return layoutTaskbarPolicy.applyLayout(next);
 }
 
 function applySystemMonitorEnabled(next) {
-  const value = Boolean(next);
-  if (value === systemMonitorEnabled) {
-    return systemMonitorEnabled;
-  }
-
-  systemMonitorEnabled = value;
-  writeUiSettings({ systemMonitorEnabled });
-  logStartup("apply-system-monitor", { systemMonitorEnabled });
-  syncSystemMonitorRunning();
-  applyLayoutToWindows();
-  broadcastUiSettings();
-  return systemMonitorEnabled;
+  return layoutTaskbarPolicy.applySystemMonitorEnabled(next);
 }
 
 function requestIslandMode(mode) {
@@ -764,66 +603,52 @@ function createWindow() {
   updateNativeHitShape();
   setMousePassthrough(true);
 
-  mainWindow.once("ready-to-show", () => {
-    if (!mainWindow || mainWindow.isDestroyed()) {
-      return;
-    }
+  registerIslandWindowLifecycle({
+    window: mainWindow,
+    logStartup,
+    events: {
+      readyToShow: "ready-to-show",
+      didFinishLoad: "did-finish-load",
+      didFailLoad: "did-fail-load",
+      renderProcessGone: "render-process-gone",
+      consoleMessage: "renderer-console",
+      show: "window-show",
+      hide: "window-hide",
+      closed: "window-closed"
+    },
+    onReadyToShow: () => {
+      if (!mainWindow || mainWindow.isDestroyed()) {
+        return;
+      }
 
-    logStartup("ready-to-show", mainWindow.getBounds());
-    resizeIsland(currentMode);
-    mainWindow.show();
-    raiseWindowForPointer(true);
-  });
+      resizeIsland(currentMode);
+      mainWindow.show();
+      raiseWindowForPointer(true);
+    },
+    onDidFinishLoad: () => {
+      if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isVisible()) {
+        return;
+      }
 
-  mainWindow.webContents.once("did-finish-load", () => {
-    logStartup("did-finish-load");
-
-    if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isVisible()) {
-      return;
-    }
-
-    resizeIsland(currentMode);
-    mainWindow.show();
-    raiseWindowForPointer(true);
-  });
-
-  mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
-    logStartup("did-fail-load", { errorCode, errorDescription, validatedURL });
-  });
-
-  mainWindow.webContents.on("render-process-gone", (_event, details) => {
-    logStartup("render-process-gone", details);
-  });
-
-  mainWindow.webContents.on("console-message", (_event, level, message, line, sourceId) => {
-    logStartup("renderer-console", { level, message, line, sourceId });
-  });
-
-  mainWindow.on("show", () => {
-    logStartup("window-show", mainWindow.getBounds());
-  });
-
-  mainWindow.on("hide", () => {
-    logStartup("window-hide");
-  });
-
-  mainWindow.on("closed", () => {
-    logStartup("window-closed");
-    mainWindow = undefined;
-  });
-
-  mainWindow.on("blur", () => {
-    if (
-      currentMode !== "expanded" &&
-      currentMode !== "clipboard" &&
-      currentMode !== "settings" &&
-      currentMode !== "privacy" &&
-      currentMode !== "privacy-expanded"
-    ) {
-      requestIslandMode("idle");
+      resizeIsland(currentMode);
+      mainWindow.show();
+      raiseWindowForPointer(true);
+    },
+    onClosed: () => {
+      mainWindow = undefined;
+    },
+    onBlur: () => {
+      if (
+        currentMode !== "expanded" &&
+        currentMode !== "clipboard" &&
+        currentMode !== "settings" &&
+        currentMode !== "privacy" &&
+        currentMode !== "privacy-expanded"
+      ) {
+        requestIslandMode("idle");
+      }
     }
   });
-
   loadRendererEntry(mainWindow, "index.html", "main", { getDevServerUrl, logStartup });
 }
 
@@ -846,65 +671,50 @@ function createSystemWindow() {
   updateSystemNativeHitShape();
   setSystemMousePassthrough(true);
 
-  systemWindow.once("ready-to-show", () => {
-    if (!systemWindow || systemWindow.isDestroyed()) {
-      return;
-    }
+  registerIslandWindowLifecycle({
+    window: systemWindow,
+    logStartup,
+    events: {
+      readyToShow: "system-ready-to-show",
+      didFinishLoad: "system-did-finish-load",
+      didFailLoad: "system-did-fail-load",
+      renderProcessGone: "system-render-process-gone",
+      consoleMessage: "system-renderer-console",
+      show: "system-window-show",
+      hide: "system-window-hide",
+      closed: "system-window-closed"
+    },
+    onReadyToShow: () => {
+      if (!systemWindow || systemWindow.isDestroyed()) {
+        return;
+      }
 
-    logStartup("system-ready-to-show", systemWindow.getBounds());
-    resizeSystemIsland(systemCurrentMode);
-    // 仅经典布局 + 监控开启 + 任务栏可见时显示；顶部居中/监控关闭时保持隐藏，避免闪现。
-    if (taskbarVisible && systemWindowShouldShow()) {
-      systemWindow.show();
-      raiseSystemWindowForPointer(true);
-    }
-  });
+      resizeSystemIsland(systemCurrentMode);
+      if (taskbarVisible && systemWindowShouldShow()) {
+        systemWindow.show();
+        raiseSystemWindowForPointer(true);
+      }
+    },
+    onDidFinishLoad: () => {
+      if (!systemWindow || systemWindow.isDestroyed() || systemWindow.isVisible()) {
+        return;
+      }
 
-  systemWindow.webContents.once("did-finish-load", () => {
-    logStartup("system-did-finish-load");
-
-    if (!systemWindow || systemWindow.isDestroyed() || systemWindow.isVisible()) {
-      return;
-    }
-
-    resizeSystemIsland(systemCurrentMode);
-    if (taskbarVisible && systemWindowShouldShow()) {
-      systemWindow.show();
-      raiseSystemWindowForPointer(true);
-    }
-  });
-
-  systemWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
-    logStartup("system-did-fail-load", { errorCode, errorDescription, validatedURL });
-  });
-
-  systemWindow.webContents.on("render-process-gone", (_event, details) => {
-    logStartup("system-render-process-gone", details);
-  });
-
-  systemWindow.webContents.on("console-message", (_event, level, message, line, sourceId) => {
-    logStartup("system-renderer-console", { level, message, line, sourceId });
-  });
-
-  systemWindow.on("show", () => {
-    logStartup("system-window-show", systemWindow.getBounds());
-  });
-
-  systemWindow.on("hide", () => {
-    logStartup("system-window-hide");
-  });
-
-  systemWindow.on("closed", () => {
-    logStartup("system-window-closed");
-    systemWindow = undefined;
-  });
-
-  systemWindow.on("blur", () => {
-    if (systemCurrentMode !== "idle") {
-      requestSystemIslandMode("idle");
+      resizeSystemIsland(systemCurrentMode);
+      if (taskbarVisible && systemWindowShouldShow()) {
+        systemWindow.show();
+        raiseSystemWindowForPointer(true);
+      }
+    },
+    onClosed: () => {
+      systemWindow = undefined;
+    },
+    onBlur: () => {
+      if (systemCurrentMode !== "idle") {
+        requestSystemIslandMode("idle");
+      }
     }
   });
-
   loadRendererEntry(systemWindow, "system.html", "system", { getDevServerUrl, logStartup });
 }
 
@@ -998,6 +808,73 @@ function showExistingWindow() {
     getModeArea,
     getCursorPoint: () => screen.getCursorScreenPoint(),
     pointInRect
+  });
+
+  const mainStageBounds = createStageBoundsController({
+    minHeight: MIN_ANIMATION_WINDOW_HEIGHT,
+    maxHeight: STAGE_SIZE.height,
+    getWindow: () => mainWindow,
+    getCurrentMode: () => currentMode,
+    getWindowHeight: () => currentWindowHeight,
+    setWindowHeight: (height) => {
+      currentWindowHeight = height;
+    },
+    getStageWidth: () => stageWidth,
+    getPosition: getStagePosition,
+    getHeightForMode: getWindowHeightForMode,
+    updateHitShape: updateNativeHitShape,
+    raiseForPointer: raiseWindowForPointer,
+    resizeCurrentMode: resizeIsland
+  });
+
+  const systemStageBounds = createStageBoundsController({
+    minHeight: MIN_ANIMATION_WINDOW_HEIGHT,
+    maxHeight: STAGE_SIZE.height,
+    getWindow: () => systemWindow,
+    getCurrentMode: () => systemCurrentMode,
+    getWindowHeight: () => systemWindowHeight,
+    setWindowHeight: (height) => {
+      systemWindowHeight = height;
+    },
+    getStageWidth: () => systemStageWidth,
+    getPosition: getSystemStagePosition,
+    resolvePosition: (position) => ({
+      x: position.x,
+      y: systemWindowVisibility.resolveY(position.y)
+    }),
+    getHeightForMode: getSystemWindowHeightForMode,
+    updateHitShape: updateSystemNativeHitShape,
+    raiseForPointer: raiseSystemWindowForPointer,
+    resizeCurrentMode: resizeSystemIsland
+  });
+
+  const layoutTaskbarPolicy = createLayoutTaskbarPolicy({
+    validLayouts: VALID_LAYOUTS,
+    getLayout: () => layout,
+    setLayoutValue: (value) => {
+      layout = value;
+    },
+    getSystemMonitorEnabled: () => systemMonitorEnabled,
+    setSystemMonitorEnabledValue: (value) => {
+      systemMonitorEnabled = value;
+    },
+    getTaskbarVisible: () => taskbarVisible,
+    setTaskbarVisibleValue: (value) => {
+      taskbarVisible = value;
+    },
+    getMainWindow: () => mainWindow,
+    getSystemWindow: () => systemWindow,
+    isRendererReady: () => rendererReady,
+    isSystemRendererReady: () => systemRendererReady,
+    logStartup,
+    writeUiSettings,
+    repositionMainWindow: repositionStageWindow,
+    showMainWindow: (win) => showAndFadeIn(win, raiseWindowForPointer),
+    hideMainWindow: fadeOutAndHide,
+    showSystemWindow,
+    hideSystemWindow,
+    sendAvoidScale,
+    syncSystemMonitorRunning
   });
 
   function handleMainRendererReady() {
@@ -1113,8 +990,8 @@ function showExistingWindow() {
   }
 
   function getUiSettings() {
-    return { layout, systemMonitorEnabled };
-  }
+  return layoutTaskbarPolicy.getUiSettings();
+}
 
   function dispose() {
     stopHoverDetection();

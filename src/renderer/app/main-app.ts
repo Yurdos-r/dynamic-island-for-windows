@@ -1,15 +1,10 @@
-import { createIcons } from "lucide";
 import "../styles.css";
 import {
   EMPTY_SYSTEM_SNAPSHOT,
-  buildSystemCapsule,
-  buildSystemCard,
-  normalizeSystemSnapshot,
-  renderSystemIcons
+  normalizeSystemSnapshot
 } from "../system-view";
-import { createElement, createIcon } from "./dom";
-import { lucideIcons } from "./icons";
-import type { AppState, ClipboardItem, ClipboardSnapshot, LyricLine, PrivacySnapshot, SettingsPage, TrackState } from "./state";
+import { createAppStateRuntime, createRendererRuntimeState } from "./runtime-state";
+import type { ClipboardItem, ClipboardSnapshot, LyricLine, PrivacySnapshot, SettingsPage, TrackState } from "./state";
 import {
   getAvailableCardModesForState,
   isCapsuleMode as isCapsuleModeFromController,
@@ -46,8 +41,7 @@ import {
 } from "./controllers/settings-controller";
 import { registerIslandApiListeners, registerRendererEvents } from "./event-binder";
 import { renderLyricsListView, prewarmExpandedLayerView, syncRendererView } from "./view-sync";
-import { appendMediaControls } from "./views/media-view";
-import { buildSettingsLayer } from "./views/settings-view";
+import { renderIslandTemplate } from "./views/template-view";
 import {
   CAPSULE_APPEAR_TRANSITION_MS,
   DEFAULT_GLASS_INTENSITY,
@@ -55,7 +49,6 @@ import {
   GLASS_INTENSITY_DISPLACE_SCALE,
   GLASS_INTENSITY_STORAGE_KEY,
   GLASS_STYLE_STORAGE_KEY,
-  ISLAND_STATE_NAMES,
   MEDIA_ENTER_TRANSITION_MS,
   MEDIA_EXIT_TRANSITION_MS,
   PRIORITY_TRANSITION_MEDIA_TO_PRIVACY,
@@ -63,13 +56,8 @@ import {
   PRIVACY_PRIORITY_STAGE_SWITCH_MS,
   PRIVACY_PRIORITY_TRANSITION_MS,
   PRIVACY_TO_MEDIA_IDLE_DELAY_MS,
-  SETTINGS_LONG_PRESS_MS,
-  createDefaultTrack,
-  createEmptyClipboardSnapshot,
-  createEmptyPrivacySnapshot
+  SETTINGS_LONG_PRESS_MS
 } from "./state";
-
-let track: TrackState = createDefaultTrack();
 
 const appRoot = document.querySelector<HTMLDivElement>("#app");
 
@@ -78,147 +66,15 @@ if (!appRoot) {
 }
 
 const app = appRoot;
-let mode: IslandMode = "idle";
-let glassStyle: GlassStyle = readStoredGlassStyle();
-let glassIntensity: GlassIntensity = readStoredGlassIntensity();
-let settingsReturnMode: IslandMode = "idle";
-let settingsLongPressTimer: number | undefined;
-// 设置中心当前子页：hub=导航首页，其余三项为二级页。仅在 mode==="settings" 时有意义。
-let settingsPage: SettingsPage = "hub";
-// 胶囊布局 + 系统监控全局开关。权威值在主进程，启动时经 getUiSettings 拉取、
-// 经 onLayoutChanged 同步。renderer 这份是镜像，用于决定内嵌系统卡/静息读数显隐。
-let layout: IslandLayout = "classic";
-let systemMonitorEnabled = true;
-let systemSnapshot = { ...EMPTY_SYSTEM_SNAPSHOT };
-let settingsLongPressPointerId: number | undefined;
-let suppressNextClick = false;
-let modeCommitToken = 0;
-let playing = false;
-let frameQueued = false;
-let favorited = false;
-let draggingProgress = false;
-let pendingSeekSeconds: number | undefined;
-let systemMediaActive = false;
-let mediaControllable = false;
-let mediaEntering = false;
-let mediaExiting = false;
-let mediaEnterTimer: number | undefined;
-let mediaExitTimer: number | undefined;
-let capsuleAppearing = false;
-let capsuleDisappearing = false;
-let capsuleAppearTimer: number | undefined;
-let capsuleDisappearTimer: number | undefined;
-let progressSeconds = 72;
-let lyrics: LyricLine[] = [];
-let lastLyricsDataKey = "";
-let lyricsCenterFrame = 0;
-let expandedLayerPrewarmed = false;
-let expandedTransitionTimer: number | undefined;
-let lastPlaybackSyncTime = window.performance.now();
-let privacyExpanded = false;
-let wasPrivacyActive = false;
-let privacyReturnMode: IslandMode = "idle";
-let clipboardSnapshot: ClipboardSnapshot = createEmptyClipboardSnapshot();
-let clipboardPromptVisible = false;
-let clipboardPromptTimer: number | undefined;
-let clipboardReturnMode: IslandMode = "idle";
-let clipboardTransitionTimer: number | undefined;
-let clipboardAccepting = false;
-let clipboardAcceptPreview = "";
-let clipboardAcceptedItem: ClipboardItem | undefined;
-let clipboardAcceptTimer: number | undefined;
-let clipboardListRenderKey = "";
-let clipboardDeleteTimer: number | undefined;
-let clipboardDeletePointerId: number | undefined;
-let clipboardDeleteItemId = "";
-let clipboardDeleteDialogItemId = "";
-let cardWheelLockedUntil = 0;
-let priorityTransition = "";
-let priorityTransitionStage = "";
-let priorityTransitionTimer: number | undefined;
-let priorityTransitionStageTimer: number | undefined;
-let priorityTransitionSettleTimer: number | undefined;
-let pendingPrivacySnapshot: PrivacySnapshot | undefined;
-let privacyState: PrivacySnapshot = createEmptyPrivacySnapshot();
 
-function createAppStateRuntime(): AppState {
-  return {
-    get mode() {
-      return mode;
-    },
-    set mode(value: IslandMode) {
-      mode = value;
-    },
-    get glassStyle() {
-      return glassStyle;
-    },
-    set glassStyle(value: GlassStyle) {
-      glassStyle = value;
-    },
-    get glassIntensity() {
-      return glassIntensity;
-    },
-    set glassIntensity(value: GlassIntensity) {
-      glassIntensity = value;
-    },
-    get settingsReturnMode() {
-      return settingsReturnMode;
-    },
-    set settingsReturnMode(value: IslandMode) {
-      settingsReturnMode = value;
-    },
-    get settingsPage() {
-      return settingsPage;
-    },
-    set settingsPage(value: SettingsPage) {
-      settingsPage = value;
-    },
-    get layout() {
-      return layout;
-    },
-    set layout(value: IslandLayout) {
-      layout = value;
-    },
-    get systemMonitorEnabled() {
-      return systemMonitorEnabled;
-    },
-    set systemMonitorEnabled(value: boolean) {
-      systemMonitorEnabled = value;
-    },
-    get track() {
-      return track;
-    },
-    set track(value: TrackState) {
-      track = value;
-    },
-    get progressSeconds() {
-      return progressSeconds;
-    },
-    set progressSeconds(value: number) {
-      progressSeconds = value;
-    },
-    get lyrics() {
-      return lyrics;
-    },
-    set lyrics(value: LyricLine[]) {
-      lyrics = value;
-    },
-    get privacyState() {
-      return privacyState;
-    },
-    set privacyState(value: PrivacySnapshot) {
-      privacyState = value;
-    },
-    get clipboardSnapshot() {
-      return clipboardSnapshot;
-    },
-    set clipboardSnapshot(value: ClipboardSnapshot) {
-      clipboardSnapshot = value;
-    }
-  };
-}
+const runtime = createRendererRuntimeState({
+  glassStyle: readStoredGlassStyle(),
+  glassIntensity: readStoredGlassIntensity(),
+  systemSnapshot: { ...EMPTY_SYSTEM_SNAPSHOT },
+  lastPlaybackSyncTime: window.performance.now()
+});
 
-const appState = createAppStateRuntime();
+const appState = createAppStateRuntime(runtime);
 
 function isGlassStyle(value: unknown): value is GlassStyle {
   return isGlassStyleValue(value);
@@ -233,11 +89,11 @@ function persistGlassStyle(style: GlassStyle) {
 }
 
 function setGlassStyle(style: GlassStyle) {
-  if (!isGlassStyle(style) || style === glassStyle) {
+  if (!isGlassStyle(style) || style === runtime.glassStyle) {
     return;
   }
 
-  glassStyle = style;
+  runtime.glassStyle = style;
   persistGlassStyle(style);
   queueSync();
 }
@@ -257,16 +113,16 @@ function persistGlassIntensity(intensity: GlassIntensity) {
 function applyGlassIntensityToFilter() {
   const node = document.getElementById("liquid-glass-displace-node");
   if (node) {
-    node.setAttribute("scale", String(GLASS_INTENSITY_DISPLACE_SCALE[glassIntensity]));
+    node.setAttribute("scale", String(GLASS_INTENSITY_DISPLACE_SCALE[runtime.glassIntensity]));
   }
 }
 
 function setGlassIntensity(intensity: GlassIntensity) {
-  if (!isGlassIntensity(intensity) || intensity === glassIntensity) {
+  if (!isGlassIntensity(intensity) || intensity === runtime.glassIntensity) {
     return;
   }
 
-  glassIntensity = intensity;
+  runtime.glassIntensity = intensity;
   persistGlassIntensity(intensity);
   applyGlassIntensityToFilter();
   queueSync();
@@ -278,7 +134,7 @@ function isLayout(value: unknown): value is IslandLayout {
 
 // 布局/开关变化后，如果当前正停在已失效的内嵌系统卡（切回经典或关闭监控），退回静息态。
 function ensureSystemModeValid() {
-  if (mode === "system" && !hasSystemCard()) {
+  if (runtime.mode === "system" && !hasSystemCard()) {
     setMode("idle");
   }
 }
@@ -286,22 +142,22 @@ function ensureSystemModeValid() {
 // 切换布局：乐观更新本地镜像并立即重绘，再把权威值交给主进程持久化/重定位窗口。
 // 主进程随后回推 onLayoutChanged，与此处保持一致。
 function setLayout(nextLayout: IslandLayout) {
-  if (!isLayout(nextLayout) || nextLayout === layout) {
+  if (!isLayout(nextLayout) || nextLayout === runtime.layout) {
     return;
   }
 
-  layout = nextLayout;
+  runtime.layout = nextLayout;
   ensureSystemModeValid();
   queueSync();
   void window.island?.setLayout(nextLayout);
 }
 
 function setSystemMonitorEnabled(enabled: boolean) {
-  if (enabled === systemMonitorEnabled) {
+  if (enabled === runtime.systemMonitorEnabled) {
     return;
   }
 
-  systemMonitorEnabled = enabled;
+  runtime.systemMonitorEnabled = enabled;
   ensureSystemModeValid();
   queueSync();
   void window.island?.setSystemMonitor(enabled);
@@ -310,67 +166,67 @@ function setSystemMonitorEnabled(enabled: boolean) {
 // 主进程推送的最新 UI 设置（启动首帧 + 每次运行时切换）。只更新镜像并重绘，不回写主进程。
 function applyUiSettings(settings: UiSettings | undefined) {
   if (settings && isLayout(settings.layout)) {
-    layout = settings.layout;
+    runtime.layout = settings.layout;
   }
   if (settings && typeof settings.systemMonitorEnabled === "boolean") {
-    systemMonitorEnabled = settings.systemMonitorEnabled;
+    runtime.systemMonitorEnabled = settings.systemMonitorEnabled;
   }
   ensureSystemModeValid();
   queueSync();
 }
 
 function setSettingsPage(page: "hub" | "appearance" | "layout" | "monitor") {
-  if (settingsPage === page) {
+  if (runtime.settingsPage === page) {
     return;
   }
 
-  settingsPage = page;
+  runtime.settingsPage = page;
   queueSync();
 }
 
 function openSettings() {
-  if (mode === "settings") {
+  if (runtime.mode === "settings") {
     return;
   }
 
   // Only reachable from the resting capsule states; never hijack media /
   // privacy / clipboard foreground surfaces.
-  if (mode !== "idle" && mode !== "peek") {
+  if (runtime.mode !== "idle" && runtime.mode !== "peek") {
     return;
   }
 
-  settingsReturnMode = "idle";
-  settingsPage = "hub";
-  suppressNextClick = true;
+  runtime.settingsReturnMode = "idle";
+  runtime.settingsPage = "hub";
+  runtime.suppressNextClick = true;
   setMode("settings");
 }
 
 function closeSettings() {
-  if (mode !== "settings") {
+  if (runtime.mode !== "settings") {
     return;
   }
 
-  settingsPage = "hub";
-  setMode(settingsReturnMode || "idle");
+  runtime.settingsPage = "hub";
+  setMode(runtime.settingsReturnMode || "idle");
 }
 
 // 从静息系统读数胶囊展开到系统监控卡片。
 function openSystemCard() {
-  if (mode === "system" || !hasSystemCard()) {
+  if (runtime.mode === "system" || !hasSystemCard()) {
     return;
   }
 
-  if (mode !== "idle" && mode !== "peek") {
+  if (runtime.mode !== "idle" && runtime.mode !== "peek") {
     return;
   }
 
-  suppressNextClick = true;
+  runtime.suppressNextClick = true;
   setMode("system");
 }
 
 // 退出系统卡片：回到静息态（随后静息读数胶囊会再次常驻显示）。
 function closeSystemCard() {
-  if (mode !== "system") {
+  if (runtime.mode !== "system") {
     return;
   }
 
@@ -378,33 +234,33 @@ function closeSystemCard() {
 }
 
 function clearSettingsLongPress() {
-  if (settingsLongPressTimer !== undefined) {
-    window.clearTimeout(settingsLongPressTimer);
-    settingsLongPressTimer = undefined;
+  if (runtime.settingsLongPressTimer !== undefined) {
+    window.clearTimeout(runtime.settingsLongPressTimer);
+    runtime.settingsLongPressTimer = undefined;
   }
 
-  settingsLongPressPointerId = undefined;
+  runtime.settingsLongPressPointerId = undefined;
 }
 
 function scheduleSettingsLongPress(pointerId: number) {
   clearSettingsLongPress();
 
-  if (mode !== "idle" && mode !== "peek") {
+  if (runtime.mode !== "idle" && runtime.mode !== "peek") {
     return;
   }
 
-  settingsLongPressPointerId = pointerId;
-  settingsLongPressTimer = window.setTimeout(() => {
-    settingsLongPressTimer = undefined;
-    settingsLongPressPointerId = undefined;
+  runtime.settingsLongPressPointerId = pointerId;
+  runtime.settingsLongPressTimer = window.setTimeout(() => {
+    runtime.settingsLongPressTimer = undefined;
+    runtime.settingsLongPressPointerId = undefined;
     openSettings();
   }, SETTINGS_LONG_PRESS_MS);
 }
 
 function resolveModeForMediaState(nextMode: IslandMode) {
   return resolveRendererModeForMediaState(nextMode, {
-    privacyActive: privacyState.active,
-    systemMediaActive
+    privacyActive: runtime.privacyState.active,
+    systemMediaActive: runtime.systemMediaActive
   });
 }
 
@@ -413,28 +269,28 @@ function formatTime(totalSeconds: number) {
 }
 
 function progressPercent() {
-  return getProgressPercent(progressSeconds, track.durationSeconds);
+  return getProgressPercent(runtime.progressSeconds, runtime.track.durationSeconds);
 }
 
 function clampProgressSeconds(seconds: number) {
-  return clampProgressSecondsForTrack(seconds, track);
+  return clampProgressSecondsForTrack(seconds, runtime.track);
 }
 
 function getProgressSecondsFromPointer(event: PointerEvent, progressTrack: HTMLElement) {
-  return getProgressSecondsFromPointerPosition(event, progressTrack, track);
+  return getProgressSecondsFromPointerPosition(event, progressTrack, runtime.track);
 }
 
 function setProgressPreview(seconds: number) {
-  progressSeconds = clampProgressSeconds(seconds);
+  runtime.progressSeconds = clampProgressSeconds(seconds);
   queueSync();
 }
 
 function getActiveLyricIndex() {
-  return getActiveLyricIndexForProgress(lyrics, progressSeconds);
+  return getActiveLyricIndexForProgress(runtime.lyrics, runtime.progressSeconds);
 }
 
 function getDisplayedLyrics() {
-  return getDisplayedLyricsForState(lyrics, systemMediaActive);
+  return getDisplayedLyricsForState(runtime.lyrics, runtime.systemMediaActive);
 }
 
 function getPrivacyLabel(kind: PrivacySnapshot["kind"]) {
@@ -442,7 +298,7 @@ function getPrivacyLabel(kind: PrivacySnapshot["kind"]) {
 }
 
 function getPrivacyApps(kind: PrivacySnapshot["kind"]) {
-  return getPrivacyAppsForKind(privacyState, kind);
+  return getPrivacyAppsForKind(runtime.privacyState, kind);
 }
 
 function getPrivacyDisplayName(app: string) {
@@ -450,7 +306,7 @@ function getPrivacyDisplayName(app: string) {
 }
 
 function getPrivacyDetailText(kind: PrivacySnapshot["kind"]) {
-  return getPrivacyDetailTextForKind(privacyState, kind);
+  return getPrivacyDetailTextForKind(runtime.privacyState, kind);
 }
 
 function canUseClipboardCard() {
@@ -459,21 +315,21 @@ function canUseClipboardCard() {
 
 function canShowClipboardPrompt() {
   return (
-    mode === "idle" ||
-    mode === "peek" ||
-    mode === "hover" ||
-    mode === "privacy" ||
-    mode === "privacy-expanded" ||
-    mode === "clipboard-prompt"
+    runtime.mode === "idle" ||
+    runtime.mode === "peek" ||
+    runtime.mode === "hover" ||
+    runtime.mode === "privacy" ||
+    runtime.mode === "privacy-expanded" ||
+    runtime.mode === "clipboard-prompt"
   );
 }
 
 function hasClipboardItems() {
-  return clipboardSnapshot.items.length > 0;
+  return runtime.clipboardSnapshot.items.length > 0;
 }
 
 function getPendingClipboardItem() {
-  return clipboardSnapshot.pending;
+  return runtime.clipboardSnapshot.pending;
 }
 
 function getClipboardPreviewText() {
@@ -482,48 +338,48 @@ function getClipboardPreviewText() {
 }
 
 function clearClipboardPromptTimer() {
-  if (clipboardPromptTimer !== undefined) {
-    window.clearTimeout(clipboardPromptTimer);
-    clipboardPromptTimer = undefined;
+  if (runtime.clipboardPromptTimer !== undefined) {
+    window.clearTimeout(runtime.clipboardPromptTimer);
+    runtime.clipboardPromptTimer = undefined;
   }
 }
 
 function getClipboardPromptRestoreMode() {
-  if (privacyState.active) {
+  if (runtime.privacyState.active) {
     return "privacy";
   }
 
-  if (systemMediaActive && !privacyState.active) {
+  if (runtime.systemMediaActive && !runtime.privacyState.active) {
     return "idle";
   }
 
   if (
-    clipboardReturnMode === "clipboard-prompt" ||
-    clipboardReturnMode === "clipboard" ||
-    clipboardReturnMode === "expanded"
+    runtime.clipboardReturnMode === "clipboard-prompt" ||
+    runtime.clipboardReturnMode === "clipboard" ||
+    runtime.clipboardReturnMode === "expanded"
   ) {
     return "idle";
   }
 
-  return clipboardReturnMode || "idle";
+  return runtime.clipboardReturnMode || "idle";
 }
 
 function getClipboardFallbackMode() {
-  return privacyState.active ? "privacy" : "idle";
+  return runtime.privacyState.active ? "privacy" : "idle";
 }
 
 function hideClipboardPrompt(restoreMode = true) {
   clearClipboardPromptTimer();
 
-  if (!clipboardPromptVisible && mode !== "clipboard-prompt") {
+  if (!runtime.clipboardPromptVisible && runtime.mode !== "clipboard-prompt") {
     return;
   }
 
-  clipboardPromptVisible = false;
+  runtime.clipboardPromptVisible = false;
 
-  if (restoreMode && mode === "clipboard-prompt") {
+  if (restoreMode && runtime.mode === "clipboard-prompt") {
     const nextMode = getClipboardPromptRestoreMode();
-    clipboardReturnMode = "idle";
+    runtime.clipboardReturnMode = "idle";
     setMode(nextMode);
   } else {
     queueSync();
@@ -537,15 +393,15 @@ function dismissClipboardPrompt(restoreMode = true) {
 }
 
 function showClipboardPrompt() {
-  if (!canShowClipboardPrompt() || !getPendingClipboardItem() || mode === "clipboard") {
+  if (!canShowClipboardPrompt() || !getPendingClipboardItem() || runtime.mode === "clipboard") {
     return;
   }
 
   clearClipboardPromptTimer();
-  clipboardPromptVisible = true;
-  clipboardReturnMode = mode === "clipboard-prompt" ? clipboardReturnMode : mode;
+  runtime.clipboardPromptVisible = true;
+  runtime.clipboardReturnMode = runtime.mode === "clipboard-prompt" ? runtime.clipboardReturnMode : runtime.mode;
   setMode("clipboard-prompt");
-  clipboardPromptTimer = window.setTimeout(() => {
+  runtime.clipboardPromptTimer = window.setTimeout(() => {
     dismissClipboardPrompt(true);
   }, 3000);
   queueSync();
@@ -571,41 +427,41 @@ async function acceptClipboardPrompt(restoreAfterAccept = false) {
   const restoreMode = getClipboardPromptRestoreMode();
   hideClipboardPrompt(false);
 
-  if (mode !== "clipboard") {
+  if (runtime.mode !== "clipboard") {
     await window.island?.acceptClipboardPending(pendingId);
-    clipboardReturnMode = "idle";
+    runtime.clipboardReturnMode = "idle";
     setMode(restoreAfterAccept ? restoreMode : "clipboard");
     return;
   }
 
-  if (clipboardAccepting || clipboardAcceptedItem) {
+  if (runtime.clipboardAccepting || runtime.clipboardAcceptedItem) {
     return;
   }
 
-  clipboardAccepting = true;
-  clipboardAcceptPreview = pendingItem?.preview || pendingItem?.text.replace(/\s+/g, " ").trim() || "";
-  clipboardAcceptedItem = pendingItem;
+  runtime.clipboardAccepting = true;
+  runtime.clipboardAcceptPreview = pendingItem?.preview || pendingItem?.text.replace(/\s+/g, " ").trim() || "";
+  runtime.clipboardAcceptedItem = pendingItem;
   queueSync();
 
-  if (clipboardAcceptTimer !== undefined) {
-    window.clearTimeout(clipboardAcceptTimer);
+  if (runtime.clipboardAcceptTimer !== undefined) {
+    window.clearTimeout(runtime.clipboardAcceptTimer);
   }
 
   await window.island?.acceptClipboardPending(pendingId);
-  clipboardReturnMode = "idle";
+  runtime.clipboardReturnMode = "idle";
 
   if (restoreAfterAccept) {
-    clipboardAccepting = false;
-    clipboardAcceptPreview = "";
-    clipboardAcceptedItem = undefined;
+    runtime.clipboardAccepting = false;
+    runtime.clipboardAcceptPreview = "";
+    runtime.clipboardAcceptedItem = undefined;
     setMode(restoreMode);
     return;
   }
 
-  clipboardAcceptTimer = window.setTimeout(() => {
-    clipboardAcceptTimer = undefined;
-    clipboardAccepting = false;
-    clipboardAcceptPreview = "";
+  runtime.clipboardAcceptTimer = window.setTimeout(() => {
+    runtime.clipboardAcceptTimer = undefined;
+    runtime.clipboardAccepting = false;
+    runtime.clipboardAcceptPreview = "";
     queueSync();
   }, 540);
 }
@@ -613,7 +469,7 @@ async function acceptClipboardPrompt(restoreAfterAccept = false) {
 function rejectClipboardPrompt() {
   const restoreMode = getClipboardPromptRestoreMode();
   dismissClipboardPrompt(false);
-  clipboardReturnMode = "idle";
+  runtime.clipboardReturnMode = "idle";
   setMode(restoreMode);
 }
 
@@ -626,11 +482,11 @@ function formatClipboardTime(timestamp: number) {
 }
 
 function hasMusicCard() {
-  return systemMediaActive || mediaEntering || mediaExiting;
+  return runtime.systemMediaActive || runtime.mediaEntering || runtime.mediaExiting;
 }
 
 function hasPrivacyIsland() {
-  return privacyState.active;
+  return runtime.privacyState.active;
 }
 
 function hasClipboardCard() {
@@ -639,7 +495,7 @@ function hasClipboardCard() {
 
 // 系统监控卡片仅在顶部居中布局 + 监控开启时可用（经典布局走独立系统窗口）。
 function hasSystemCard() {
-  return layout === "top-center" && systemMonitorEnabled;
+  return runtime.layout === "top-center" && runtime.systemMonitorEnabled;
 }
 
 // 顶部居中 + 监控开启 + 当前没有任何前台内容（音乐/权限/剪贴板）时，静息胶囊常驻系统读数。
@@ -653,21 +509,21 @@ function getAvailableCardModes(): IslandMode[] {
     hasMusicCard: hasMusicCard(),
     hasPrivacyIsland: hasPrivacyIsland(),
     hasSystemCard: hasSystemCard(),
-    systemMediaActive
+    systemMediaActive: runtime.systemMediaActive
   });
 }
 
-function isCardMode(nextMode = mode) {
+function isCardMode(nextMode = runtime.mode) {
   return isCardModeFromController(nextMode);
 }
 
 function switchCardPage(direction: number) {
-  if (!isCardMode() || clipboardDeleteDialogItemId || draggingProgress) {
+  if (!isCardMode() || runtime.clipboardDeleteDialogItemId || runtime.draggingProgress) {
     return false;
   }
 
   const now = window.performance.now();
-  if (now < cardWheelLockedUntil) {
+  if (now < runtime.cardWheelLockedUntil) {
     return true;
   }
 
@@ -676,145 +532,145 @@ function switchCardPage(direction: number) {
     return false;
   }
 
-  const currentIndex = Math.max(0, cardModes.indexOf(mode));
+  const currentIndex = Math.max(0, cardModes.indexOf(runtime.mode));
   const offset = direction > 0 ? 1 : -1;
   const nextIndex = (currentIndex + offset + cardModes.length) % cardModes.length;
-  cardWheelLockedUntil = now + 420;
+  runtime.cardWheelLockedUntil = now + 420;
   setMode(cardModes[nextIndex]);
   return true;
 }
 
 function clearPriorityTransition() {
-  if (priorityTransitionStageTimer !== undefined) {
-    window.clearTimeout(priorityTransitionStageTimer);
-    priorityTransitionStageTimer = undefined;
+  if (runtime.priorityTransitionStageTimer !== undefined) {
+    window.clearTimeout(runtime.priorityTransitionStageTimer);
+    runtime.priorityTransitionStageTimer = undefined;
   }
 
-  if (priorityTransitionTimer !== undefined) {
-    window.clearTimeout(priorityTransitionTimer);
-    priorityTransitionTimer = undefined;
+  if (runtime.priorityTransitionTimer !== undefined) {
+    window.clearTimeout(runtime.priorityTransitionTimer);
+    runtime.priorityTransitionTimer = undefined;
   }
 
-  if (priorityTransitionSettleTimer !== undefined) {
-    window.clearTimeout(priorityTransitionSettleTimer);
-    priorityTransitionSettleTimer = undefined;
+  if (runtime.priorityTransitionSettleTimer !== undefined) {
+    window.clearTimeout(runtime.priorityTransitionSettleTimer);
+    runtime.priorityTransitionSettleTimer = undefined;
   }
 
-  if (!priorityTransition) {
+  if (!runtime.priorityTransition) {
     return;
   }
 
-  priorityTransition = "";
-  priorityTransitionStage = "";
+  runtime.priorityTransition = "";
+  runtime.priorityTransitionStage = "";
   queueSync();
 }
 
 function clearInactiveMediaState() {
-  favorited = false;
-  progressSeconds = 0;
-  lyrics = [];
-  lastLyricsDataKey = "";
-  lastPlaybackSyncTime = window.performance.now();
+  runtime.favorited = false;
+  runtime.progressSeconds = 0;
+  runtime.lyrics = [];
+  runtime.lastLyricsDataKey = "";
+  runtime.lastPlaybackSyncTime = window.performance.now();
 }
 
 function cancelMediaExitTransition() {
-  if (mediaExitTimer !== undefined) {
-    window.clearTimeout(mediaExitTimer);
-    mediaExitTimer = undefined;
+  if (runtime.mediaExitTimer !== undefined) {
+    window.clearTimeout(runtime.mediaExitTimer);
+    runtime.mediaExitTimer = undefined;
   }
 
-  if (mediaExiting) {
-    mediaExiting = false;
+  if (runtime.mediaExiting) {
+    runtime.mediaExiting = false;
     queueSync();
   }
 }
 
 function cancelMediaEnterTransition() {
-  if (mediaEnterTimer !== undefined) {
-    window.clearTimeout(mediaEnterTimer);
-    mediaEnterTimer = undefined;
+  if (runtime.mediaEnterTimer !== undefined) {
+    window.clearTimeout(runtime.mediaEnterTimer);
+    runtime.mediaEnterTimer = undefined;
   }
 
-  if (mediaEntering) {
-    mediaEntering = false;
+  if (runtime.mediaEntering) {
+    runtime.mediaEntering = false;
     queueSync();
   }
 }
 
 function cancelCapsuleAppearTransition() {
-  if (capsuleAppearTimer !== undefined) {
-    window.clearTimeout(capsuleAppearTimer);
-    capsuleAppearTimer = undefined;
+  if (runtime.capsuleAppearTimer !== undefined) {
+    window.clearTimeout(runtime.capsuleAppearTimer);
+    runtime.capsuleAppearTimer = undefined;
   }
 
-  if (capsuleAppearing) {
-    capsuleAppearing = false;
+  if (runtime.capsuleAppearing) {
+    runtime.capsuleAppearing = false;
     queueSync();
   }
 }
 
 function cancelCapsuleDisappearTransition() {
-  if (capsuleDisappearTimer !== undefined) {
-    window.clearTimeout(capsuleDisappearTimer);
-    capsuleDisappearTimer = undefined;
+  if (runtime.capsuleDisappearTimer !== undefined) {
+    window.clearTimeout(runtime.capsuleDisappearTimer);
+    runtime.capsuleDisappearTimer = undefined;
   }
 
-  if (capsuleDisappearing) {
-    capsuleDisappearing = false;
+  if (runtime.capsuleDisappearing) {
+    runtime.capsuleDisappearing = false;
     queueSync();
   }
 }
 
 function startCapsuleAppearTransition() {
-  if (capsuleAppearing) {
+  if (runtime.capsuleAppearing) {
     return;
   }
 
-  capsuleAppearing = true;
+  runtime.capsuleAppearing = true;
   queueSync();
-  capsuleAppearTimer = window.setTimeout(() => {
-    capsuleAppearTimer = undefined;
-    capsuleAppearing = false;
+  runtime.capsuleAppearTimer = window.setTimeout(() => {
+    runtime.capsuleAppearTimer = undefined;
+    runtime.capsuleAppearing = false;
     queueSync();
   }, CAPSULE_APPEAR_TRANSITION_MS);
 }
 
 function startCapsuleDisappearTransition() {
-  if (capsuleDisappearing) {
+  if (runtime.capsuleDisappearing) {
     return;
   }
 
-  capsuleDisappearing = true;
+  runtime.capsuleDisappearing = true;
   queueSync();
-  capsuleDisappearTimer = window.setTimeout(() => {
-    capsuleDisappearTimer = undefined;
-    capsuleDisappearing = false;
+  runtime.capsuleDisappearTimer = window.setTimeout(() => {
+    runtime.capsuleDisappearTimer = undefined;
+    runtime.capsuleDisappearing = false;
     queueSync();
   }, MEDIA_EXIT_TRANSITION_MS);
 }
 
 function startMediaEnterTransition() {
-  if (mediaEntering) {
+  if (runtime.mediaEntering) {
     return;
   }
 
-  mediaEntering = true;
-  mediaEnterTimer = window.setTimeout(() => {
-    mediaEnterTimer = undefined;
-    mediaEntering = false;
+  runtime.mediaEntering = true;
+  runtime.mediaEnterTimer = window.setTimeout(() => {
+    runtime.mediaEnterTimer = undefined;
+    runtime.mediaEntering = false;
     queueSync();
   }, MEDIA_ENTER_TRANSITION_MS);
 }
 
 function startMediaExitTransition() {
-  if (mediaExiting) {
+  if (runtime.mediaExiting) {
     return;
   }
 
-  mediaExiting = true;
-  mediaExitTimer = window.setTimeout(() => {
-    mediaExitTimer = undefined;
-    mediaExiting = false;
+  runtime.mediaExiting = true;
+  runtime.mediaExitTimer = window.setTimeout(() => {
+    runtime.mediaExitTimer = undefined;
+    runtime.mediaExiting = false;
     clearInactiveMediaState();
     queueSync();
   }, MEDIA_EXIT_TRANSITION_MS);
@@ -850,50 +706,50 @@ function startPriorityTransition(name: string, duration = PRIVACY_PRIORITY_TRANS
   const stageSwitchDuration = timing.stageSwitch;
   const settleDelay = timing.settleDelay;
 
-  if (priorityTransitionStageTimer !== undefined) {
-    window.clearTimeout(priorityTransitionStageTimer);
-    priorityTransitionStageTimer = undefined;
+  if (runtime.priorityTransitionStageTimer !== undefined) {
+    window.clearTimeout(runtime.priorityTransitionStageTimer);
+    runtime.priorityTransitionStageTimer = undefined;
   }
 
-  if (priorityTransitionTimer !== undefined) {
-    window.clearTimeout(priorityTransitionTimer);
-    priorityTransitionTimer = undefined;
+  if (runtime.priorityTransitionTimer !== undefined) {
+    window.clearTimeout(runtime.priorityTransitionTimer);
+    runtime.priorityTransitionTimer = undefined;
   }
 
-  if (priorityTransitionSettleTimer !== undefined) {
-    window.clearTimeout(priorityTransitionSettleTimer);
-    priorityTransitionSettleTimer = undefined;
+  if (runtime.priorityTransitionSettleTimer !== undefined) {
+    window.clearTimeout(runtime.priorityTransitionSettleTimer);
+    runtime.priorityTransitionSettleTimer = undefined;
   }
 
   const [firstStage, secondStage] = getPriorityTransitionStages(name);
-  priorityTransition = name;
-  priorityTransitionStage = firstStage;
-  priorityTransitionStageTimer = window.setTimeout(() => {
-    priorityTransitionStageTimer = undefined;
+  runtime.priorityTransition = name;
+  runtime.priorityTransitionStage = firstStage;
+  runtime.priorityTransitionStageTimer = window.setTimeout(() => {
+    runtime.priorityTransitionStageTimer = undefined;
 
-    if (priorityTransition === name) {
-      priorityTransitionStage = secondStage;
+    if (runtime.priorityTransition === name) {
+      runtime.priorityTransitionStage = secondStage;
       queueSync();
     }
   }, Math.min(stageSwitchDuration, Math.max(0, transitionDuration - 40)));
-  priorityTransitionTimer = window.setTimeout(() => {
-    priorityTransitionTimer = undefined;
+  runtime.priorityTransitionTimer = window.setTimeout(() => {
+    runtime.priorityTransitionTimer = undefined;
 
-    if (priorityTransition === name) {
+    if (runtime.priorityTransition === name) {
       const finishTransition = () => {
-        if (priorityTransition !== name) {
+        if (runtime.priorityTransition !== name) {
           return;
         }
 
-        priorityTransition = "";
-        priorityTransitionStage = "";
+        runtime.priorityTransition = "";
+        runtime.priorityTransitionStage = "";
         onDone?.();
         queueSync();
       };
 
       if (settleDelay > 0) {
-        priorityTransitionSettleTimer = window.setTimeout(() => {
-          priorityTransitionSettleTimer = undefined;
+        runtime.priorityTransitionSettleTimer = window.setTimeout(() => {
+          runtime.priorityTransitionSettleTimer = undefined;
           finishTransition();
         }, settleDelay);
       } else {
@@ -917,7 +773,7 @@ async function commitProgress(seconds: number) {
   const nextSeconds = clampProgressSeconds(seconds);
   setProgressPreview(nextSeconds);
 
-  if (systemMediaActive && mediaControllable) {
+  if (runtime.systemMediaActive && runtime.mediaControllable) {
     const result = await window.island?.seekMedia(nextSeconds);
     return result;
   }
@@ -926,282 +782,27 @@ async function commitProgress(seconds: number) {
 }
 
 function renderTemplate() {
-  app.replaceChildren();
-
-  const shell = createElement("section", {
-    className: "island-shell",
-    attributes: { "aria-label": "灵动岛" }
-  });
-
-  const albumArt = createElement("div", {
-    className: "shared-album-art",
-    attributes: { "aria-hidden": "true" }
-  });
-  albumArt.append(createIcon("music-2", "音乐"));
-
-  const trackCopy = createElement("div", {
-    className: "shared-track-copy",
-    attributes: { "aria-hidden": "true" }
-  });
-  trackCopy.append(
-    createElement("strong", {
-      className: "shared-track-title",
-      text: track.title,
-      dataset: { field: "track-title" }
-    }),
-    createElement("span", {
-      className: "shared-track-artist",
-      text: track.artist,
-      dataset: { field: "track-artist" }
-    })
-  );
-
-  const idleLayer = createElement("button", {
-    className: "island-layer idle-layer",
-    attributes: {
-      type: "button",
-      "aria-label": `打开${ISLAND_STATE_NAMES.island}`
+  renderIslandTemplate({
+    app,
+    track: runtime.track,
+    progressSeconds: runtime.progressSeconds,
+    progressPercent,
+    formatTime,
+    resetLyricsDataKey: () => {
+      runtime.lastLyricsDataKey = "";
     },
-    dataset: { action: "open-quick" }
+    renderLyricsList
   });
-
-  const hoverLayer = createElement("div", {
-    className: "island-layer hover-layer",
-    attributes: { "aria-label": `音乐${ISLAND_STATE_NAMES.island}` }
-  });
-  const compactButton = createElement("button", {
-    className: "media-compact",
-    attributes: {
-      type: "button",
-      "aria-label": `打开音乐${ISLAND_STATE_NAMES.card}`
-    },
-    dataset: { action: "expand" }
-  });
-  const quickControls = createElement("div", {
-    className: "quick-media-controls",
-    attributes: { "aria-label": "小岛媒体控制" }
-  });
-  appendMediaControls(quickControls, "compact");
-  hoverLayer.append(compactButton, quickControls);
-
-  const privacyStrip = createElement("button", {
-    className: "island-layer privacy-strip",
-    attributes: {
-      type: "button",
-      "aria-live": "polite",
-      "aria-expanded": "false",
-      "aria-label": `权限监控${ISLAND_STATE_NAMES.capsule}`
-    },
-    dataset: { action: "privacy-toggle" }
-  });
-
-  const clipboardPromptLayer = createElement("div", {
-    className: "island-layer clipboard-prompt-layer",
-    attributes: {
-      role: "button",
-      tabindex: "0",
-      "aria-label": "进入剪贴板"
-    },
-    dataset: { action: "clipboard-open-card" }
-  });
-  const clipboardPromptCopy = createElement("span", { className: "clipboard-prompt-copy" });
-  clipboardPromptCopy.append(
-    createElement("strong", { className: "clipboard-prompt-text", text: "" }),
-    createElement("small", { className: "clipboard-prompt-question", text: "进入剪贴板？" })
-  );
-  clipboardPromptLayer.append(
-    createElement("span", {
-      className: "clipboard-prompt-icon",
-      attributes: { "aria-hidden": "true" }
-    }),
-    clipboardPromptCopy,
-    createElement("button", {
-      className: "clipboard-prompt-action",
-      text: "是",
-      attributes: {
-        type: "button"
-      },
-      dataset: { action: "clipboard-accept" }
-    })
-  );
-
-  const clipboardLayer = createElement("main", {
-    className: "island-layer clipboard-layer",
-    attributes: { "aria-label": "剪贴板" }
-  });
-  const clipboardHeader = createElement("header", { className: "clipboard-header" });
-  const clipboardHeaderCopy = createElement("div", { className: "clipboard-header-copy" });
-  clipboardHeaderCopy.append(
-    createElement("div", { className: "clipboard-title", text: "剪贴板" }),
-    createElement("div", { className: "clipboard-subtitle", text: "最近复制" })
-  );
-  clipboardHeader.append(
-    clipboardHeaderCopy,
-    createElement("button", {
-      className: "clipboard-clear-button",
-      text: "清理",
-      attributes: {
-        type: "button",
-        "aria-label": "一键清理剪贴板历史"
-      },
-      dataset: { action: "clipboard-clear" }
-    })
-  );
-  const clipboardList = createElement("div", {
-    className: "clipboard-list",
-    attributes: { role: "list" }
-  });
-  const clipboardConfirmPanel = createElement("section", {
-    className: "clipboard-confirm-panel",
-    attributes: { "aria-label": "确认加入剪贴板" }
-  });
-  clipboardConfirmPanel.append(
-    createElement("span", {
-      className: "clipboard-confirm-icon clipboard-row-icon",
-      attributes: { "aria-hidden": "true" }
-    }),
-    createElement("span", { className: "clipboard-confirm-kicker", text: "是否加入剪贴板" }),
-    createElement("strong", { className: "clipboard-confirm-preview", text: "" }),
-    createElement("small", { className: "clipboard-confirm-time", text: "" }),
-    createElement("div", { className: "clipboard-confirm-actions" })
-  );
-  const clipboardConfirmActions = clipboardConfirmPanel.querySelector<HTMLElement>(".clipboard-confirm-actions");
-  clipboardConfirmActions?.append(
-    createElement("button", {
-      className: "clipboard-confirm-no",
-      text: "否",
-      attributes: { type: "button" },
-      dataset: { action: "clipboard-reject" }
-    }),
-    createElement("button", {
-      className: "clipboard-confirm-yes",
-      text: "是",
-      attributes: { type: "button" },
-      dataset: { action: "clipboard-accept" }
-    })
-  );
-  const clipboardDeleteDialog = createElement("div", {
-    className: "clipboard-delete-dialog",
-    attributes: {
-      role: "dialog",
-      "aria-modal": "true",
-      "aria-label": "删除剪贴板记录"
-    }
-  });
-  const clipboardDeletePanel = createElement("div", { className: "clipboard-delete-panel" });
-  clipboardDeletePanel.append(
-    createElement("strong", { className: "clipboard-delete-title", text: "删除这条记录？" }),
-    createElement("span", { className: "clipboard-delete-preview", text: "" }),
-    createElement("div", { className: "clipboard-delete-actions" })
-  );
-  const clipboardDeleteActions = clipboardDeletePanel.querySelector<HTMLElement>(".clipboard-delete-actions");
-  clipboardDeleteActions?.append(
-    createElement("button", {
-      className: "clipboard-delete-cancel",
-      text: "取消",
-      attributes: { type: "button" },
-      dataset: { action: "clipboard-delete-cancel" }
-    }),
-    createElement("button", {
-      className: "clipboard-delete-confirm",
-      text: "删除",
-      attributes: { type: "button" },
-      dataset: { action: "clipboard-delete-confirm" }
-    })
-  );
-  clipboardDeleteDialog.append(clipboardDeletePanel);
-  clipboardLayer.append(clipboardHeader, clipboardConfirmPanel, clipboardList, clipboardDeleteDialog);
-
-  const expandedLayer = createElement("main", {
-    className: "island-layer expanded-layer",
-    attributes: { "aria-label": `音乐${ISLAND_STATE_NAMES.card}` }
-  });
-  const mediaPanel = createElement("section", {
-    className: "media-panel",
-    attributes: { "aria-label": "当前播放" }
-  });
-  const mediaCopy = createElement("div", { className: "media-copy" });
-  const progressTrack = createElement("div", {
-    className: "progress-track",
-    attributes: {
-      role: "slider",
-      tabindex: "0",
-      "aria-label": "播放进度",
-      "aria-valuemin": "0",
-      "aria-valuemax": track.durationSeconds.toString(),
-      "aria-valuenow": progressSeconds.toString()
-    }
-  });
-  const progressFill = createElement("span", { dataset: { field: "progress-fill" } });
-  progressFill.style.width = progressPercent();
-  progressTrack.append(progressFill);
-
-  const timeRow = createElement("div", { className: "media-time-row" });
-  timeRow.append(
-    createElement("span", { text: formatTime(progressSeconds), dataset: { field: "elapsed-time" } }),
-    createElement("span", { text: formatTime(track.durationSeconds), dataset: { field: "duration-time" } })
-  );
-  mediaCopy.append(progressTrack, timeRow);
-
-  const expandedControls = createElement("div", {
-    className: "expanded-media-controls",
-    attributes: { "aria-label": "卡片媒体控制" }
-  });
-  appendMediaControls(expandedControls, "expanded");
-  mediaPanel.append(mediaCopy, expandedControls);
-
-  const lyricsPanel = createElement("section", {
-    className: "lyrics-panel",
-    attributes: { "aria-label": "歌词" }
-  });
-  const lyricsList = createElement("div", { className: "lyrics-list" });
-  lyricsList.append(createElement("div", { className: "lyrics-list-inner" }));
-  lyricsPanel.append(lyricsList);
-  expandedLayer.append(mediaPanel, lyricsPanel);
-
-  const settingsLayer = buildSettingsLayer();
-
-  const systemCardLayer = buildSystemCard();
-  systemCardLayer.classList.add("island-layer");
-  // 静息态（无音乐/权限/剪贴板）时，胶囊常驻系统紧凑读数，点击展开到系统卡。
-  const systemCapsuleLayer = buildSystemCapsule();
-  systemCapsuleLayer.dataset.action = "open-system";
-
-  const cardPager = createElement("div", {
-    className: "card-pager",
-    attributes: { "aria-hidden": "true" }
-  });
-
-  shell.append(
-    albumArt,
-    trackCopy,
-    idleLayer,
-    hoverLayer,
-    privacyStrip,
-    clipboardPromptLayer,
-    clipboardLayer,
-    expandedLayer,
-    settingsLayer,
-    systemCapsuleLayer,
-    systemCardLayer,
-    cardPager
-  );
-  app.append(shell);
-
-  lastLyricsDataKey = "";
-  renderLyricsList();
-  createIcons({ icons: lucideIcons });
-  renderSystemIcons(app);
 }
 
 function queueSync() {
-  if (frameQueued) {
+  if (runtime.frameQueued) {
     return;
   }
 
-  frameQueued = true;
+  runtime.frameQueued = true;
   window.requestAnimationFrame(() => {
-    frameQueued = false;
+    runtime.frameQueued = false;
     syncUi();
   });
 }
@@ -1209,68 +810,68 @@ function queueSync() {
 function createViewSyncContext() {
   return {
     app,
-    get track() { return track; },
-    set track(value: TrackState) { track = value; },
-    get progressSeconds() { return progressSeconds; },
-    set progressSeconds(value: number) { progressSeconds = value; },
-    get lyrics() { return lyrics; },
-    set lyrics(value: LyricLine[]) { lyrics = value; },
-    get systemMediaActive() { return systemMediaActive; },
-    set systemMediaActive(value: boolean) { systemMediaActive = value; },
-    get lastLyricsDataKey() { return lastLyricsDataKey; },
-    set lastLyricsDataKey(value: string) { lastLyricsDataKey = value; },
-    get lyricsCenterFrame() { return lyricsCenterFrame; },
-    set lyricsCenterFrame(value: number) { lyricsCenterFrame = value; },
-    get mode() { return mode; },
-    set mode(value: IslandMode) { mode = value; },
-    get glassStyle() { return glassStyle; },
-    set glassStyle(value: GlassStyle) { glassStyle = value; },
-    get glassIntensity() { return glassIntensity; },
-    set glassIntensity(value: GlassIntensity) { glassIntensity = value; },
-    get playing() { return playing; },
-    set playing(value: boolean) { playing = value; },
-    get favorited() { return favorited; },
-    set favorited(value: boolean) { favorited = value; },
-    get draggingProgress() { return draggingProgress; },
-    set draggingProgress(value: boolean) { draggingProgress = value; },
-    get mediaEntering() { return mediaEntering; },
-    set mediaEntering(value: boolean) { mediaEntering = value; },
-    get mediaExiting() { return mediaExiting; },
-    set mediaExiting(value: boolean) { mediaExiting = value; },
-    get capsuleAppearing() { return capsuleAppearing; },
-    set capsuleAppearing(value: boolean) { capsuleAppearing = value; },
-    get capsuleDisappearing() { return capsuleDisappearing; },
-    set capsuleDisappearing(value: boolean) { capsuleDisappearing = value; },
-    get privacyState() { return privacyState; },
-    set privacyState(value: PrivacySnapshot) { privacyState = value; },
-    get priorityTransition() { return priorityTransition; },
-    set priorityTransition(value: string) { priorityTransition = value; },
-    get priorityTransitionStage() { return priorityTransitionStage; },
-    set priorityTransitionStage(value: string) { priorityTransitionStage = value; },
-    get clipboardPromptVisible() { return clipboardPromptVisible; },
-    set clipboardPromptVisible(value: boolean) { clipboardPromptVisible = value; },
-    get settingsPage() { return settingsPage; },
-    set settingsPage(value: SettingsPage) { settingsPage = value; },
-    get layout() { return layout; },
-    set layout(value: IslandLayout) { layout = value; },
-    get systemMonitorEnabled() { return systemMonitorEnabled; },
-    set systemMonitorEnabled(value: boolean) { systemMonitorEnabled = value; },
-    get systemSnapshot() { return systemSnapshot; },
-    set systemSnapshot(value: SystemSnapshot) { systemSnapshot = value; },
-    get privacyExpanded() { return privacyExpanded; },
-    set privacyExpanded(value: boolean) { privacyExpanded = value; },
-    get clipboardSnapshot() { return clipboardSnapshot; },
-    set clipboardSnapshot(value: ClipboardSnapshot) { clipboardSnapshot = value; },
-    get clipboardAccepting() { return clipboardAccepting; },
-    set clipboardAccepting(value: boolean) { clipboardAccepting = value; },
-    get clipboardAcceptPreview() { return clipboardAcceptPreview; },
-    set clipboardAcceptPreview(value: string) { clipboardAcceptPreview = value; },
-    get clipboardListRenderKey() { return clipboardListRenderKey; },
-    set clipboardListRenderKey(value: string) { clipboardListRenderKey = value; },
-    get clipboardDeleteDialogItemId() { return clipboardDeleteDialogItemId; },
-    set clipboardDeleteDialogItemId(value: string) { clipboardDeleteDialogItemId = value; },
-    get expandedLayerPrewarmed() { return expandedLayerPrewarmed; },
-    set expandedLayerPrewarmed(value: boolean) { expandedLayerPrewarmed = value; },
+    get track() { return runtime.track; },
+    set track(value: TrackState) { runtime.track = value; },
+    get progressSeconds() { return runtime.progressSeconds; },
+    set progressSeconds(value: number) { runtime.progressSeconds = value; },
+    get lyrics() { return runtime.lyrics; },
+    set lyrics(value: LyricLine[]) { runtime.lyrics = value; },
+    get systemMediaActive() { return runtime.systemMediaActive; },
+    set systemMediaActive(value: boolean) { runtime.systemMediaActive = value; },
+    get lastLyricsDataKey() { return runtime.lastLyricsDataKey; },
+    set lastLyricsDataKey(value: string) { runtime.lastLyricsDataKey = value; },
+    get lyricsCenterFrame() { return runtime.lyricsCenterFrame; },
+    set lyricsCenterFrame(value: number) { runtime.lyricsCenterFrame = value; },
+    get mode() { return runtime.mode; },
+    set mode(value: IslandMode) { runtime.mode = value; },
+    get glassStyle() { return runtime.glassStyle; },
+    set glassStyle(value: GlassStyle) { runtime.glassStyle = value; },
+    get glassIntensity() { return runtime.glassIntensity; },
+    set glassIntensity(value: GlassIntensity) { runtime.glassIntensity = value; },
+    get playing() { return runtime.playing; },
+    set playing(value: boolean) { runtime.playing = value; },
+    get favorited() { return runtime.favorited; },
+    set favorited(value: boolean) { runtime.favorited = value; },
+    get draggingProgress() { return runtime.draggingProgress; },
+    set draggingProgress(value: boolean) { runtime.draggingProgress = value; },
+    get mediaEntering() { return runtime.mediaEntering; },
+    set mediaEntering(value: boolean) { runtime.mediaEntering = value; },
+    get mediaExiting() { return runtime.mediaExiting; },
+    set mediaExiting(value: boolean) { runtime.mediaExiting = value; },
+    get capsuleAppearing() { return runtime.capsuleAppearing; },
+    set capsuleAppearing(value: boolean) { runtime.capsuleAppearing = value; },
+    get capsuleDisappearing() { return runtime.capsuleDisappearing; },
+    set capsuleDisappearing(value: boolean) { runtime.capsuleDisappearing = value; },
+    get privacyState() { return runtime.privacyState; },
+    set privacyState(value: PrivacySnapshot) { runtime.privacyState = value; },
+    get priorityTransition() { return runtime.priorityTransition; },
+    set priorityTransition(value: string) { runtime.priorityTransition = value; },
+    get priorityTransitionStage() { return runtime.priorityTransitionStage; },
+    set priorityTransitionStage(value: string) { runtime.priorityTransitionStage = value; },
+    get clipboardPromptVisible() { return runtime.clipboardPromptVisible; },
+    set clipboardPromptVisible(value: boolean) { runtime.clipboardPromptVisible = value; },
+    get settingsPage() { return runtime.settingsPage; },
+    set settingsPage(value: SettingsPage) { runtime.settingsPage = value; },
+    get layout() { return runtime.layout; },
+    set layout(value: IslandLayout) { runtime.layout = value; },
+    get systemMonitorEnabled() { return runtime.systemMonitorEnabled; },
+    set systemMonitorEnabled(value: boolean) { runtime.systemMonitorEnabled = value; },
+    get systemSnapshot() { return runtime.systemSnapshot; },
+    set systemSnapshot(value: SystemSnapshot) { runtime.systemSnapshot = value; },
+    get privacyExpanded() { return runtime.privacyExpanded; },
+    set privacyExpanded(value: boolean) { runtime.privacyExpanded = value; },
+    get clipboardSnapshot() { return runtime.clipboardSnapshot; },
+    set clipboardSnapshot(value: ClipboardSnapshot) { runtime.clipboardSnapshot = value; },
+    get clipboardAccepting() { return runtime.clipboardAccepting; },
+    set clipboardAccepting(value: boolean) { runtime.clipboardAccepting = value; },
+    get clipboardAcceptPreview() { return runtime.clipboardAcceptPreview; },
+    set clipboardAcceptPreview(value: string) { runtime.clipboardAcceptPreview = value; },
+    get clipboardListRenderKey() { return runtime.clipboardListRenderKey; },
+    set clipboardListRenderKey(value: string) { runtime.clipboardListRenderKey = value; },
+    get clipboardDeleteDialogItemId() { return runtime.clipboardDeleteDialogItemId; },
+    set clipboardDeleteDialogItemId(value: string) { runtime.clipboardDeleteDialogItemId = value; },
+    get expandedLayerPrewarmed() { return runtime.expandedLayerPrewarmed; },
+    set expandedLayerPrewarmed(value: boolean) { runtime.expandedLayerPrewarmed = value; },
     getDisplayedLyrics,
     getActiveLyricIndex,
     getAvailableCardModes,
@@ -1315,11 +916,11 @@ function commitModeChange(previousMode: IslandMode, resolvedMode: IslandMode, re
     (previousMode === "privacy" || previousMode === "clipboard-prompt") && isTransparentIdleMode(resolvedMode);
 
   app.dataset.previousMode = previousMode;
-  mode = resolvedMode;
+  runtime.mode = resolvedMode;
 
-  if (clipboardTransitionTimer !== undefined) {
-    window.clearTimeout(clipboardTransitionTimer);
-    clipboardTransitionTimer = undefined;
+  if (runtime.clipboardTransitionTimer !== undefined) {
+    window.clearTimeout(runtime.clipboardTransitionTimer);
+    runtime.clipboardTransitionTimer = undefined;
   }
 
   if (shouldAnimateCapsuleAppear) {
@@ -1333,15 +934,15 @@ function commitModeChange(previousMode: IslandMode, resolvedMode: IslandMode, re
     cancelCapsuleDisappearTransition();
   }
 
-  if (expandedTransitionTimer !== undefined) {
-    window.clearTimeout(expandedTransitionTimer);
-    expandedTransitionTimer = undefined;
+  if (runtime.expandedTransitionTimer !== undefined) {
+    window.clearTimeout(runtime.expandedTransitionTimer);
+    runtime.expandedTransitionTimer = undefined;
   }
 
   if (resolvedMode === "expanded" && previousMode !== "expanded") {
     app.dataset.enteringExpanded = "true";
-    expandedTransitionTimer = window.setTimeout(() => {
-      expandedTransitionTimer = undefined;
+    runtime.expandedTransitionTimer = window.setTimeout(() => {
+      runtime.expandedTransitionTimer = undefined;
       if (app.dataset.enteringExpanded === "true") {
         app.dataset.enteringExpanded = "false";
       }
@@ -1364,8 +965,8 @@ function commitModeChange(previousMode: IslandMode, resolvedMode: IslandMode, re
   if (resolvedMode === "clipboard") {
     app.dataset.enteringClipboard = "true";
     app.dataset.returningFromClipboard = "false";
-    clipboardTransitionTimer = window.setTimeout(() => {
-      clipboardTransitionTimer = undefined;
+    runtime.clipboardTransitionTimer = window.setTimeout(() => {
+      runtime.clipboardTransitionTimer = undefined;
       if (app.dataset.enteringClipboard === "true") {
         app.dataset.enteringClipboard = "false";
       }
@@ -1374,8 +975,8 @@ function commitModeChange(previousMode: IslandMode, resolvedMode: IslandMode, re
     clearAcceptedClipboardSurface();
     app.dataset.enteringClipboard = "false";
     app.dataset.returningFromClipboard = "true";
-    clipboardTransitionTimer = window.setTimeout(() => {
-      clipboardTransitionTimer = undefined;
+    runtime.clipboardTransitionTimer = window.setTimeout(() => {
+      runtime.clipboardTransitionTimer = undefined;
       if (app.dataset.returningFromClipboard === "true") {
         app.dataset.returningFromClipboard = "false";
       }
@@ -1390,7 +991,7 @@ function commitModeChange(previousMode: IslandMode, resolvedMode: IslandMode, re
   }
 
   if (resolvedMode === "expanded" && previousMode !== "expanded") {
-    frameQueued = false;
+    runtime.frameQueued = false;
     syncUi();
     return;
   }
@@ -1402,7 +1003,7 @@ function setMode(nextMode: IslandMode, resizeWindow = true) {
   const resolvedMode = resolveModeForMediaState(nextMode);
   const shouldResizeWindow = resizeWindow || resolvedMode !== nextMode;
 
-  if (mode === resolvedMode) {
+  if (runtime.mode === resolvedMode) {
     if (shouldResizeWindow) {
       void window.island?.resize(resolvedMode);
     }
@@ -1410,70 +1011,70 @@ function setMode(nextMode: IslandMode, resizeWindow = true) {
     return;
   }
 
-  const previousMode = mode;
-  modeCommitToken += 1;
+  const previousMode = runtime.mode;
+  runtime.modeCommitToken += 1;
   commitModeChange(previousMode, resolvedMode, shouldResizeWindow);
 }
 
 function togglePrivacyDetail() {
-  if (!privacyState.active) {
+  if (!runtime.privacyState.active) {
     return;
   }
 
-  privacyExpanded = !privacyExpanded;
-  setMode(privacyExpanded ? "privacy-expanded" : "privacy");
+  runtime.privacyExpanded = !runtime.privacyExpanded;
+  setMode(runtime.privacyExpanded ? "privacy-expanded" : "privacy");
   queueSync();
 }
 
 function collapsePrivacyDetail() {
-  if (!privacyExpanded) {
+  if (!runtime.privacyExpanded) {
     return;
   }
 
-  privacyExpanded = false;
+  runtime.privacyExpanded = false;
   setMode("privacy");
   queueSync();
 }
 
 function togglePlay() {
-  if (!systemMediaActive || !mediaControllable) {
+  if (!runtime.systemMediaActive || !runtime.mediaControllable) {
     return;
   }
 
-  playing = !playing;
+  runtime.playing = !runtime.playing;
   queueSync();
   void window.island?.controlMedia("toggle-play");
 }
 
 function skipTrack(action: "previous-track" | "next-track") {
-  if (!systemMediaActive || !mediaControllable) {
+  if (!runtime.systemMediaActive || !runtime.mediaControllable) {
     return;
   }
 
-  playing = true;
-  progressSeconds = 0;
+  runtime.playing = true;
+  runtime.progressSeconds = 0;
   queueSync();
   void window.island?.controlMedia(action);
 }
 
 async function toggleFavorite() {
-  if (!systemMediaActive || !mediaControllable) {
+  if (!runtime.systemMediaActive || !runtime.mediaControllable) {
     return;
   }
 
-  const previousFavorited = favorited;
-  favorited = !favorited;
+  const previousFavorited = runtime.favorited;
+  runtime.favorited = !runtime.favorited;
   queueSync();
 
   const result = await window.island?.controlMedia("favorite-track");
   if (typeof result?.favorited === "boolean") {
-    favorited = result.favorited;
+    runtime.favorited = result.favorited;
     queueSync();
     return;
   }
 
   if (result?.ok === false) {
-    favorited = previousFavorited;
+    runtime.favorited = previousFavorited;
     queueSync();
   }
 }
@@ -1481,8 +1082,8 @@ async function toggleFavorite() {
 function setProgress(seconds: number, syncSystem = false) {
   setProgressPreview(seconds);
 
-  if (syncSystem && systemMediaActive && mediaControllable) {
-    void window.island?.seekMedia(progressSeconds);
+  if (syncSystem && runtime.systemMediaActive && runtime.mediaControllable) {
+    void window.island?.seekMedia(runtime.progressSeconds);
   }
 }
 
@@ -1500,40 +1101,40 @@ async function copyClipboardText(text: string) {
 }
 
 function clearClipboardDeleteTimer() {
-  if (clipboardDeleteTimer !== undefined) {
-    window.clearTimeout(clipboardDeleteTimer);
-    clipboardDeleteTimer = undefined;
+  if (runtime.clipboardDeleteTimer !== undefined) {
+    window.clearTimeout(runtime.clipboardDeleteTimer);
+    runtime.clipboardDeleteTimer = undefined;
   }
 
-  clipboardDeletePointerId = undefined;
-  clipboardDeleteItemId = "";
+  runtime.clipboardDeletePointerId = undefined;
+  runtime.clipboardDeleteItemId = "";
 }
 
 function getClipboardItemById(itemId: string) {
-  return clipboardSnapshot.items.find((item) => item.id === itemId);
+  return runtime.clipboardSnapshot.items.find((item) => item.id === itemId);
 }
 
 function getAcceptedClipboardItem() {
-  if (!clipboardAcceptedItem) {
+  if (!runtime.clipboardAcceptedItem) {
     return undefined;
   }
 
   return (
-    clipboardSnapshot.items.find((item) => item.id === clipboardAcceptedItem?.id) ||
-    clipboardSnapshot.items.find((item) => item.text === clipboardAcceptedItem?.text) ||
-    clipboardAcceptedItem
+    runtime.clipboardSnapshot.items.find((item) => item.id === runtime.clipboardAcceptedItem?.id) ||
+    runtime.clipboardSnapshot.items.find((item) => item.text === runtime.clipboardAcceptedItem?.text) ||
+    runtime.clipboardAcceptedItem
   );
 }
 
 function clearAcceptedClipboardSurface() {
-  if (clipboardAcceptTimer !== undefined) {
-    window.clearTimeout(clipboardAcceptTimer);
-    clipboardAcceptTimer = undefined;
+  if (runtime.clipboardAcceptTimer !== undefined) {
+    window.clearTimeout(runtime.clipboardAcceptTimer);
+    runtime.clipboardAcceptTimer = undefined;
   }
 
-  clipboardAccepting = false;
-  clipboardAcceptPreview = "";
-  clipboardAcceptedItem = undefined;
+  runtime.clipboardAccepting = false;
+  runtime.clipboardAcceptPreview = "";
+  runtime.clipboardAcceptedItem = undefined;
 }
 
 function openClipboardDeleteDialog(itemId: string) {
@@ -1541,22 +1142,22 @@ function openClipboardDeleteDialog(itemId: string) {
     return;
   }
 
-  clipboardDeleteDialogItemId = itemId;
+  runtime.clipboardDeleteDialogItemId = itemId;
   queueSync();
 }
 
 function closeClipboardDeleteDialog() {
-  if (!clipboardDeleteDialogItemId) {
+  if (!runtime.clipboardDeleteDialogItemId) {
     return;
   }
 
-  clipboardDeleteDialogItemId = "";
+  runtime.clipboardDeleteDialogItemId = "";
   queueSync();
 }
 
 function confirmClipboardDelete() {
-  const deleteId = clipboardDeleteDialogItemId;
-  clipboardDeleteDialogItemId = "";
+  const deleteId = runtime.clipboardDeleteDialogItemId;
+  runtime.clipboardDeleteDialogItemId = "";
 
   if (deleteId) {
     const acceptedItem = getAcceptedClipboardItem();
@@ -1576,10 +1177,10 @@ function scheduleClipboardItemDelete(itemId: string, pointerId: number) {
     return;
   }
 
-  clipboardDeleteItemId = itemId;
-  clipboardDeletePointerId = pointerId;
-  clipboardDeleteTimer = window.setTimeout(() => {
-    const deleteId = clipboardDeleteItemId;
+  runtime.clipboardDeleteItemId = itemId;
+  runtime.clipboardDeletePointerId = pointerId;
+  runtime.clipboardDeleteTimer = window.setTimeout(() => {
+    const deleteId = runtime.clipboardDeleteItemId;
     clearClipboardDeleteTimer();
     if (deleteId) {
       openClipboardDeleteDialog(deleteId);
@@ -1592,10 +1193,10 @@ function createRendererEventContext() {
     app,
     island: window.island,
     get suppressNextClick() {
-      return suppressNextClick;
+      return runtime.suppressNextClick;
     },
     set suppressNextClick(value: boolean) {
-      suppressNextClick = value;
+      runtime.suppressNextClick = value;
     },
     get mode() {
       return appState.mode;
@@ -1610,10 +1211,10 @@ function createRendererEventContext() {
       appState.settingsPage = value;
     },
     get systemMonitorEnabled() {
-      return systemMonitorEnabled;
+      return runtime.systemMonitorEnabled;
     },
     set systemMonitorEnabled(value: boolean) {
-      systemMonitorEnabled = value;
+      runtime.systemMonitorEnabled = value;
     },
     get privacyState() {
       return appState.privacyState;
@@ -1622,10 +1223,10 @@ function createRendererEventContext() {
       appState.privacyState = value;
     },
     get systemMediaActive() {
-      return systemMediaActive;
+      return runtime.systemMediaActive;
     },
     set systemMediaActive(value: boolean) {
-      systemMediaActive = value;
+      runtime.systemMediaActive = value;
     },
     get clipboardSnapshot() {
       return appState.clipboardSnapshot;
@@ -1634,34 +1235,34 @@ function createRendererEventContext() {
       appState.clipboardSnapshot = value;
     },
     get clipboardAcceptedItem() {
-      return clipboardAcceptedItem;
+      return runtime.clipboardAcceptedItem;
     },
     set clipboardAcceptedItem(value: ClipboardItem | undefined) {
-      clipboardAcceptedItem = value;
+      runtime.clipboardAcceptedItem = value;
     },
     get clipboardDeletePointerId() {
-      return clipboardDeletePointerId;
+      return runtime.clipboardDeletePointerId;
     },
     set clipboardDeletePointerId(value: number | undefined) {
-      clipboardDeletePointerId = value;
+      runtime.clipboardDeletePointerId = value;
     },
     get settingsLongPressPointerId() {
-      return settingsLongPressPointerId;
+      return runtime.settingsLongPressPointerId;
     },
     set settingsLongPressPointerId(value: number | undefined) {
-      settingsLongPressPointerId = value;
+      runtime.settingsLongPressPointerId = value;
     },
     get draggingProgress() {
-      return draggingProgress;
+      return runtime.draggingProgress;
     },
     set draggingProgress(value: boolean) {
-      draggingProgress = value;
+      runtime.draggingProgress = value;
     },
     get pendingSeekSeconds() {
-      return pendingSeekSeconds;
+      return runtime.pendingSeekSeconds;
     },
     set pendingSeekSeconds(value: number | undefined) {
-      pendingSeekSeconds = value;
+      runtime.pendingSeekSeconds = value;
     },
     get progressSeconds() {
       return appState.progressSeconds;
@@ -1676,16 +1277,16 @@ function createRendererEventContext() {
       appState.track = value;
     },
     get playing() {
-      return playing;
+      return runtime.playing;
     },
     set playing(value: boolean) {
-      playing = value;
+      runtime.playing = value;
     },
     get lastPlaybackSyncTime() {
-      return lastPlaybackSyncTime;
+      return runtime.lastPlaybackSyncTime;
     },
     set lastPlaybackSyncTime(value: number) {
-      lastPlaybackSyncTime = value;
+      runtime.lastPlaybackSyncTime = value;
     },
     setSettingsPage,
     isGlassStyle,
@@ -1742,22 +1343,22 @@ function handleModeRequest(requestedMode: IslandMode) {
 
 function handleMediaUpdate(snapshot: MediaSnapshot) {
   if (!snapshot.active) {
-    const hadVisibleMedia = systemMediaActive || mediaExiting;
+    const hadVisibleMedia = runtime.systemMediaActive || runtime.mediaExiting;
 
-    systemMediaActive = false;
-    mediaControllable = false;
-    playing = false;
+    runtime.systemMediaActive = false;
+    runtime.mediaControllable = false;
+    runtime.playing = false;
     cancelMediaEnterTransition();
 
-    if (privacyState.active && mode === "expanded") {
+    if (runtime.privacyState.active && runtime.mode === "expanded") {
       setMode("privacy");
-    } else if (!privacyState.active && (mode === "hover" || mode === "expanded")) {
-      setMode(mode === "expanded" && hasClipboardCard() ? "clipboard" : "idle");
+    } else if (!runtime.privacyState.active && (runtime.mode === "hover" || runtime.mode === "expanded")) {
+      setMode(runtime.mode === "expanded" && hasClipboardCard() ? "clipboard" : "idle");
     }
 
-    if (hadVisibleMedia && !privacyState.active) {
+    if (hadVisibleMedia && !runtime.privacyState.active) {
       startMediaExitTransition();
-      lastPlaybackSyncTime = window.performance.now();
+      runtime.lastPlaybackSyncTime = window.performance.now();
     } else {
       cancelMediaExitTransition();
       clearInactiveMediaState();
@@ -1767,27 +1368,27 @@ function handleMediaUpdate(snapshot: MediaSnapshot) {
     return;
   }
 
-  const shouldEnterMedia = !privacyState.active && (!systemMediaActive || mediaExiting);
+  const shouldEnterMedia = !runtime.privacyState.active && (!runtime.systemMediaActive || runtime.mediaExiting);
   cancelMediaExitTransition();
-  systemMediaActive = true;
-  mediaControllable = snapshot.controllable !== false;
-  track = {
+  runtime.systemMediaActive = true;
+  runtime.mediaControllable = snapshot.controllable !== false;
+  runtime.track = {
     title: snapshot.title || "Unknown Title",
     artist: snapshot.artist || snapshot.sourceApp || "Unknown Artist",
     cover: snapshot.cover,
-    durationSeconds: Math.max(1, snapshot.durationSeconds || track.durationSeconds)
+    durationSeconds: Math.max(1, snapshot.durationSeconds || runtime.track.durationSeconds)
   };
-  playing = snapshot.playing;
+  runtime.playing = snapshot.playing;
   if (typeof snapshot.favorited === "boolean") {
-    favorited = snapshot.favorited;
+    runtime.favorited = snapshot.favorited;
   }
-  lyrics = Array.isArray(snapshot.lyrics) ? snapshot.lyrics : [];
+  runtime.lyrics = Array.isArray(snapshot.lyrics) ? snapshot.lyrics : [];
 
-  if (!draggingProgress) {
-    progressSeconds = clampProgressSeconds(snapshot.positionSeconds || 0);
+  if (!runtime.draggingProgress) {
+    runtime.progressSeconds = clampProgressSeconds(snapshot.positionSeconds || 0);
   }
 
-  lastPlaybackSyncTime = window.performance.now();
+  runtime.lastPlaybackSyncTime = window.performance.now();
   if (shouldEnterMedia) {
     startMediaEnterTransition();
   }
@@ -1796,8 +1397,8 @@ function handleMediaUpdate(snapshot: MediaSnapshot) {
 }
 
 function handlePrivacyUpdate(snapshot: PrivacySnapshot) {
-  const previousPrivacyActive = wasPrivacyActive;
-  const previousMode = mode;
+  const previousPrivacyActive = runtime.wasPrivacyActive;
+  const previousMode = runtime.mode;
   const nextPrivacyState: PrivacySnapshot = {
     available: Boolean(snapshot?.available),
     active: Boolean(snapshot?.active),
@@ -1809,26 +1410,26 @@ function handlePrivacyUpdate(snapshot: PrivacySnapshot) {
   const shouldHandOffFromMedia =
     !previousPrivacyActive &&
     nextPrivacyState.active &&
-    systemMediaActive &&
+    runtime.systemMediaActive &&
     (previousMode === "idle" || previousMode === "peek" || previousMode === "hover");
   const shouldHandBackToMedia =
     previousPrivacyActive &&
     !nextPrivacyState.active &&
-    systemMediaActive &&
-    (mode === "privacy" || mode === "privacy-expanded");
+    runtime.systemMediaActive &&
+    (runtime.mode === "privacy" || runtime.mode === "privacy-expanded");
 
   if (shouldHandBackToMedia) {
-    pendingPrivacySnapshot = nextPrivacyState;
-    privacyExpanded = false;
-    const restoreMode = privacyReturnMode === "privacy" ? "idle" : privacyReturnMode;
+    runtime.pendingPrivacySnapshot = nextPrivacyState;
+    runtime.privacyExpanded = false;
+    const restoreMode = runtime.privacyReturnMode === "privacy" ? "idle" : runtime.privacyReturnMode;
     startPriorityTransition(PRIORITY_TRANSITION_PRIVACY_TO_MEDIA, PRIVACY_PRIORITY_TRANSITION_MS, () => {
-      if (pendingPrivacySnapshot) {
-        privacyState = pendingPrivacySnapshot;
-        pendingPrivacySnapshot = undefined;
+      if (runtime.pendingPrivacySnapshot) {
+        runtime.privacyState = runtime.pendingPrivacySnapshot;
+        runtime.pendingPrivacySnapshot = undefined;
       }
 
-      wasPrivacyActive = privacyState.active;
-      privacyReturnMode = "idle";
+      runtime.wasPrivacyActive = runtime.privacyState.active;
+      runtime.privacyReturnMode = "idle";
       setMode(restoreMode || "idle");
     });
     setMode("privacy");
@@ -1836,18 +1437,18 @@ function handlePrivacyUpdate(snapshot: PrivacySnapshot) {
     return;
   }
 
-  pendingPrivacySnapshot = undefined;
-  privacyState = nextPrivacyState;
-  wasPrivacyActive = privacyState.active;
+  runtime.pendingPrivacySnapshot = undefined;
+  runtime.privacyState = nextPrivacyState;
+  runtime.wasPrivacyActive = runtime.privacyState.active;
 
-  if (privacyState.active) {
+  if (runtime.privacyState.active) {
     const userSelectedForeground =
-      mode === "clipboard" ||
-      mode === "clipboard-prompt" ||
-      (previousPrivacyActive && mode === "expanded");
+      runtime.mode === "clipboard" ||
+      runtime.mode === "clipboard-prompt" ||
+      (previousPrivacyActive && runtime.mode === "expanded");
 
-    if (!previousPrivacyActive && mode !== "privacy" && mode !== "privacy-expanded" && mode !== "peek") {
-      privacyReturnMode = mode;
+    if (!previousPrivacyActive && runtime.mode !== "privacy" && runtime.mode !== "privacy-expanded" && runtime.mode !== "peek") {
+      runtime.privacyReturnMode = runtime.mode;
     }
 
     if (shouldHandOffFromMedia) {
@@ -1857,14 +1458,14 @@ function handlePrivacyUpdate(snapshot: PrivacySnapshot) {
     }
 
     if (!userSelectedForeground) {
-      setMode(privacyExpanded ? "privacy-expanded" : "privacy");
+      setMode(runtime.privacyExpanded ? "privacy-expanded" : "privacy");
     }
   } else {
-    privacyExpanded = false;
+    runtime.privacyExpanded = false;
     clearPriorityTransition();
-    if (mode === "privacy" || mode === "privacy-expanded" || mode === "peek") {
-      const restoreMode = privacyReturnMode === "privacy" ? "idle" : privacyReturnMode;
-      privacyReturnMode = "idle";
+    if (runtime.mode === "privacy" || runtime.mode === "privacy-expanded" || runtime.mode === "peek") {
+      const restoreMode = runtime.privacyReturnMode === "privacy" ? "idle" : runtime.privacyReturnMode;
+      runtime.privacyReturnMode = "idle";
       setMode(restoreMode);
     }
   }
@@ -1874,18 +1475,18 @@ function handlePrivacyUpdate(snapshot: PrivacySnapshot) {
 }
 
 function handleClipboardUpdate(snapshot: ClipboardSnapshot) {
-  const previousPendingId = clipboardSnapshot.pending?.id || "";
+  const previousPendingId = runtime.clipboardSnapshot.pending?.id || "";
   const nextClipboardSnapshot = normalizeClipboardSnapshot(snapshot);
   const nextPendingId = nextClipboardSnapshot.pending?.id || "";
 
-  clipboardSnapshot = nextClipboardSnapshot;
+  runtime.clipboardSnapshot = nextClipboardSnapshot;
 
-  if (mode === "clipboard" && !hasClipboardItems() && !getPendingClipboardItem() && !clipboardAccepting && !clipboardAcceptedItem) {
+  if (runtime.mode === "clipboard" && !hasClipboardItems() && !getPendingClipboardItem() && !runtime.clipboardAccepting && !runtime.clipboardAcceptedItem) {
     setMode(getClipboardFallbackMode());
     return;
   }
 
-  if (mode === "clipboard") {
+  if (runtime.mode === "clipboard") {
     queueSync();
     return;
   }
@@ -1899,7 +1500,7 @@ function handleClipboardUpdate(snapshot: ClipboardSnapshot) {
 }
 
 function handleSystemUpdate(snapshot: SystemSnapshot) {
-  systemSnapshot = normalizeSystemSnapshot(snapshot);
+  runtime.systemSnapshot = normalizeSystemSnapshot(snapshot);
   queueSync();
 
 }
@@ -1907,12 +1508,12 @@ function handleSystemUpdate(snapshot: SystemSnapshot) {
 function handlePlaybackTick() {
   const now = window.performance.now();
 
-  if (systemMediaActive && playing && !draggingProgress) {
-    const elapsedSeconds = Math.max(0, Math.min((now - lastPlaybackSyncTime) / 1000, 1));
-    setProgress(progressSeconds + elapsedSeconds);
+  if (runtime.systemMediaActive && runtime.playing && !runtime.draggingProgress) {
+    const elapsedSeconds = Math.max(0, Math.min((now - runtime.lastPlaybackSyncTime) / 1000, 1));
+    setProgress(runtime.progressSeconds + elapsedSeconds);
   }
 
-  lastPlaybackSyncTime = now;
+  runtime.lastPlaybackSyncTime = now;
 
 }
 
