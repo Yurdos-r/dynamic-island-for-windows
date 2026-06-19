@@ -1,5 +1,5 @@
 const path = require("node:path");
-const { BrowserWindow, screen } = require("electron");
+const { screen } = require("electron");
 const { IPC_CHANNELS } = require("../../shared/island-contracts");
 const {
   COLLAPSE_HIT_AREA_HOLD_MS,
@@ -23,7 +23,10 @@ const {
   resolveModeForMediaState: resolveLayoutModeForMediaState
 } = require("./layout-engine");
 const { createWindowFader } = require("./fade-controller");
+const { createHitTargetManager } = require("./hit-target-manager");
 const { createMainHoverController, createSystemHoverController } = require("./hover-controller");
+const { createSystemWindowVisibilityManager } = require("./system-window-visibility");
+const { configureIslandBrowserWindow, createIslandBrowserWindow } = require("./window-factory");
 
 function createIslandWindowManager(options = {}) {
   const logStartup = options.logStartup || (() => {});
@@ -55,12 +58,6 @@ function createIslandWindowManager(options = {}) {
   let systemRendererInteracting = false;
   let lastMousePassthroughCheck = 0;
   let lastSystemMousePassthroughCheck = 0;
-  let mouseHitHoldMode = "";
-  let mouseHitHoldUntil = 0;
-  let systemMouseHitHoldMode = "";
-  let systemMouseHitHoldUntil = 0;
-  let shapeRefreshTimer;
-  let systemShapeRefreshTimer;
   let currentWindowHeight = MIN_ANIMATION_WINDOW_HEIGHT;
   let systemWindowHeight = MIN_ANIMATION_WINDOW_HEIGHT;
   let lastPointerRaiseAt = 0;
@@ -197,32 +194,12 @@ function getModeArea(mode) {
   return getLayoutModeArea(mode);
 }
 
-function clearExpiredMouseHitHold(now = Date.now()) {
-  if (mouseHitHoldUntil && now >= mouseHitHoldUntil) {
-    mouseHitHoldMode = "";
-    mouseHitHoldUntil = 0;
-  }
-}
-
-function clearExpiredSystemMouseHitHold(now = Date.now()) {
-  if (systemMouseHitHoldUntil && now >= systemMouseHitHoldUntil) {
-    systemMouseHitHoldMode = "";
-    systemMouseHitHoldUntil = 0;
-  }
-}
-
 function clearShapeRefreshTimer() {
-  if (shapeRefreshTimer) {
-    clearTimeout(shapeRefreshTimer);
-    shapeRefreshTimer = undefined;
-  }
+  mainHitTarget.clearShapeRefreshTimer();
 }
 
 function clearSystemShapeRefreshTimer() {
-  if (systemShapeRefreshTimer) {
-    clearTimeout(systemShapeRefreshTimer);
-    systemShapeRefreshTimer = undefined;
-  }
+  systemHitTarget.clearShapeRefreshTimer();
 }
 
 function getWindowHeightForMode(mode = currentMode) {
@@ -334,125 +311,27 @@ function scheduleSystemStageWindowForMode(previousMode, nextMode) {
 }
 
 function updateNativeHitShape() {
-  if (!NATIVE_HIT_SHAPE || !mainWindow || mainWindow.isDestroyed() || typeof mainWindow.setShape !== "function") {
-    return;
-  }
-
-  const now = Date.now();
-  clearExpiredMouseHitHold(now);
-
-  const rects = [getIslandLocalRect(currentMode, NATIVE_HIT_SHAPE_PADDING, NATIVE_HIT_SHAPE_PADDING)];
-
-  if (mouseHitHoldMode && mouseHitHoldUntil > now) {
-    rects.push(getIslandLocalRect(mouseHitHoldMode, NATIVE_HIT_SHAPE_PADDING, NATIVE_HIT_SHAPE_PADDING));
-  }
-
-  mainWindow.setShape(rects);
-
-  clearShapeRefreshTimer();
-  if (mouseHitHoldMode && mouseHitHoldUntil > now) {
-    shapeRefreshTimer = setTimeout(() => {
-      shapeRefreshTimer = undefined;
-      clearExpiredMouseHitHold();
-      updateNativeHitShape();
-    }, mouseHitHoldUntil - now + 16);
-  }
+  mainHitTarget.updateNativeHitShape();
 }
 
 function updateSystemNativeHitShape() {
-  if (!NATIVE_HIT_SHAPE || !systemWindow || systemWindow.isDestroyed() || typeof systemWindow.setShape !== "function") {
-    return;
-  }
-
-  const now = Date.now();
-  clearExpiredSystemMouseHitHold(now);
-
-  const rects = [getSystemIslandLocalRect(systemCurrentMode, NATIVE_HIT_SHAPE_PADDING, NATIVE_HIT_SHAPE_PADDING)];
-
-  if (systemMouseHitHoldMode && systemMouseHitHoldUntil > now) {
-    rects.push(getSystemIslandLocalRect(systemMouseHitHoldMode, NATIVE_HIT_SHAPE_PADDING, NATIVE_HIT_SHAPE_PADDING));
-  }
-
-  systemWindow.setShape(rects);
-
-  clearSystemShapeRefreshTimer();
-  if (systemMouseHitHoldMode && systemMouseHitHoldUntil > now) {
-    systemShapeRefreshTimer = setTimeout(() => {
-      systemShapeRefreshTimer = undefined;
-      clearExpiredSystemMouseHitHold();
-      updateSystemNativeHitShape();
-    }, systemMouseHitHoldUntil - now + 16);
-  }
+  systemHitTarget.updateNativeHitShape();
 }
 
 function armCollapseHitHold(previousMode, nextMode) {
-  if (previousMode === nextMode) {
-    return;
-  }
-
-  if (getModeArea(previousMode) <= getModeArea(nextMode)) {
-    mouseHitHoldMode = "";
-    mouseHitHoldUntil = 0;
-    return;
-  }
-
-  mouseHitHoldMode = previousMode;
-  mouseHitHoldUntil = Date.now() + COLLAPSE_HIT_AREA_HOLD_MS;
+  mainHitTarget.armCollapseHitHold(previousMode, nextMode);
 }
 
 function armSystemCollapseHitHold(previousMode, nextMode) {
-  if (previousMode === nextMode) {
-    return;
-  }
-
-  if (getModeArea(previousMode) <= getModeArea(nextMode)) {
-    systemMouseHitHoldMode = "";
-    systemMouseHitHoldUntil = 0;
-    return;
-  }
-
-  systemMouseHitHoldMode = previousMode;
-  systemMouseHitHoldUntil = Date.now() + COLLAPSE_HIT_AREA_HOLD_MS;
+  systemHitTarget.armCollapseHitHold(previousMode, nextMode);
 }
 
 function isPointerInsideMouseTarget(padding = 0) {
-  if (!mainWindow || mainWindow.isDestroyed()) {
-    return false;
-  }
-
-  const now = Date.now();
-  const point = screen.getCursorScreenPoint();
-
-  if (pointInRect(point, getIslandRect(currentMode, padding, padding))) {
-    return true;
-  }
-
-  clearExpiredMouseHitHold(now);
-  return Boolean(
-    mouseHitHoldMode &&
-      mouseHitHoldUntil > now &&
-      pointInRect(point, getIslandRect(mouseHitHoldMode, padding, padding))
-  );
+  return mainHitTarget.isPointerInsideMouseTarget(padding);
 }
 
 function isPointerInsideSystemMouseTarget(padding = 0) {
-  if (!systemWindow || systemWindow.isDestroyed()) {
-    return false;
-  }
-
-  const now = Date.now();
-  const point = screen.getCursorScreenPoint();
-
-  if (pointInRect(point, getSystemIslandRect(systemCurrentMode, padding, padding))) {
-    return true;
-  }
-
-  clearExpiredSystemMouseHitHold(now);
-  return Boolean(
-    systemMouseHitHoldMode &&
-      systemMouseHitHoldUntil > now &&
-      pointInRect(point, getSystemIslandRect(systemMouseHitHoldMode, padding, padding))
-  );
+  return systemHitTarget.isPointerInsideMouseTarget(padding);
 }
 
 function setMousePassthrough(ignored) {
@@ -624,7 +503,7 @@ function repositionSystemStageWindow() {
   const position = getSystemStagePosition();
   // 已 park（隐藏）的窗口：保持移出屏幕，仅同步尺寸与命中区，绝不移回屏幕内。
   // 这样任务栏轮询触发的周期性 repositionAllStageWindows 不会把隐藏的系统窗拽回来。
-  const y = systemWindowParked ? position.y + SYSTEM_PARK_Y_OFFSET : position.y;
+  const y = systemWindowVisibility.resolveY(position.y);
   systemWindow.setBounds({
     x: position.x,
     y,
@@ -648,8 +527,7 @@ function repositionAllStageWindows() {
 // 时不会缩窗，故这里直接把 systemWindowHeight 重置并通知 renderer 同步回 idle。
 function collapseSystemWindowToIdle() {
   systemCurrentMode = "idle";
-  systemMouseHitHoldMode = "";
-  systemMouseHitHoldUntil = 0;
+  systemHitTarget.resetHold();
   systemWindowHeight = getSystemWindowHeightForMode("idle");
   if (systemWindow && !systemWindow.isDestroyed() && systemRendererReady) {
     systemWindow.webContents.send(IPC_CHANNELS.setMode, "idle");
@@ -676,10 +554,6 @@ function sendAvoidScale() {
   }
 
   mainWindow.webContents.send(IPC_CHANNELS.avoidScale, computeAvoidScale());
-}
-
-function clearFadeTimer(win) {
-  windowFader.clear(win);
 }
 
 // 用 setInterval 步进 setOpacity，把窗口透明度过渡到 target，到位后执行 done。
@@ -749,54 +623,22 @@ function syncSystemMonitorRunning() {
 // 仅销毁重建可救）——这正是「切到顶部居中再切回 / 关开监控后右下胶囊可见却点不动，重启
 // 才好」的根因。改用「移到屏幕外 → 移回原位」隐藏/显示，命中测试全程保持有效（实测移屏
 // 循环后仍可点）。SYSTEM_PARK_Y_OFFSET 足够大以确保窗口完全移出任意显示器。
-const SYSTEM_PARK_Y_OFFSET = 10000;
-let systemWindowParked = false;
-
 function unparkSystemWindow() {
-  systemWindowParked = false;
+  systemWindowVisibility.unpark();
 }
 
 // 淡出后把系统窗口移出屏幕（替代 fadeOutAndHide）。用 systemVisibilityToken 防竞态：
 // 若淡出未完成时 show 路径已介入（token 递增），过期的淡出回调不再 park，避免把刚显示
 // 的窗口又移出屏幕。
-let systemVisibilityToken = 0;
-
-function fadeOutAndParkSystemWindow() {
-  if (!systemWindow || systemWindow.isDestroyed()) {
-    return;
-  }
-  if (!systemWindow.isVisible()) {
-    // 从未显示过：直接标记 park（位置在 reposition 时落到屏幕外），无需淡出。
-    systemWindowParked = true;
-    repositionSystemStageWindow();
-    return;
-  }
-  const token = ++systemVisibilityToken;
-  fadeWindowTo(systemWindow, 0, () => {
-    if (token !== systemVisibilityToken || !systemWindow || systemWindow.isDestroyed()) {
-      return;
-    }
-    systemWindowParked = true;
-    repositionSystemStageWindow();
-  });
-}
-
 // 显示系统窗口：解除 park（含使过期淡出回调失效）→ 收回 idle 基线 → 重定位到屏幕内 → 淡入。
 // park 回来的窗口始终 isVisible，showAndFadeIn 不重复 show()，只淡入透明度。
 function showSystemWindow() {
-  systemVisibilityToken += 1;
-  unparkSystemWindow();
-  collapseSystemWindowToIdle();
-  repositionSystemStageWindow();
-  if (systemRendererReady) {
-    showAndFadeIn(systemWindow, raiseSystemWindowForPointer, restoreSystemWindowHitState);
-  }
+  systemWindowVisibility.show();
 }
 
 // 隐藏系统窗口：收回 idle 基线后淡出并 park（移出屏幕，绝不 hide()）。
 function hideSystemWindow() {
-  collapseSystemWindowToIdle();
-  fadeOutAndParkSystemWindow();
+  systemWindowVisibility.hide();
 }
 
 function applyLayoutToWindows() {
@@ -910,34 +752,15 @@ function createWindow() {
   const position = getStagePosition(currentWindowHeight);
   logStartup("create-window", { ...position, opaqueWindow: OPAQUE_WINDOW });
 
-  mainWindow = new BrowserWindow({
+  mainWindow = createIslandBrowserWindow({
     width: stageWidth,
     height: currentWindowHeight,
-    ...position,
-    show: false,
-    frame: false,
-    transparent: !OPAQUE_WINDOW,
-    resizable: false,
-    fullscreenable: false,
-    maximizable: false,
-    minimizable: false,
-    skipTaskbar: true,
-    alwaysOnTop: true,
-    hasShadow: false,
-    backgroundColor: OPAQUE_WINDOW ? "#05070c" : "#00000000",
-    paintWhenInitiallyHidden: true,
-    webPreferences: {
-      preload: preloadPath,
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,
-      backgroundThrottling: false
-    }
+    position,
+    opaqueWindow: OPAQUE_WINDOW,
+    preloadPath
   });
 
-  mainWindow.setAlwaysOnTop(true, "screen-saver");
-  mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  mainWindow.setMenuBarVisibility(false);
+  configureIslandBrowserWindow(mainWindow);
   updateNativeHitShape();
   setMousePassthrough(true);
 
@@ -1011,34 +834,15 @@ function createSystemWindow() {
   const position = getSystemStagePosition(systemWindowHeight);
   logStartup("create-system-window", { ...position, opaqueWindow: OPAQUE_WINDOW });
 
-  systemWindow = new BrowserWindow({
+  systemWindow = createIslandBrowserWindow({
     width: systemStageWidth,
     height: systemWindowHeight,
-    ...position,
-    show: false,
-    frame: false,
-    transparent: !OPAQUE_WINDOW,
-    resizable: false,
-    fullscreenable: false,
-    maximizable: false,
-    minimizable: false,
-    skipTaskbar: true,
-    alwaysOnTop: true,
-    hasShadow: false,
-    backgroundColor: OPAQUE_WINDOW ? "#05070c" : "#00000000",
-    paintWhenInitiallyHidden: true,
-    webPreferences: {
-      preload: preloadPath,
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,
-      backgroundThrottling: false
-    }
+    position,
+    opaqueWindow: OPAQUE_WINDOW,
+    preloadPath
   });
 
-  systemWindow.setAlwaysOnTop(true, "screen-saver");
-  systemWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  systemWindow.setMenuBarVisibility(false);
+  configureIslandBrowserWindow(systemWindow);
   updateSystemNativeHitShape();
   setSystemMousePassthrough(true);
 
@@ -1135,8 +939,7 @@ function showExistingWindow() {
     } else {
       // park（移出屏幕）而非 hide()：避免后续 show 触发命中僵死。
       systemWindow.show();
-      systemWindowParked = true;
-      repositionSystemStageWindow();
+      systemWindowVisibility.parkWithoutFade();
     }
   }
 }
@@ -1158,6 +961,43 @@ function showExistingWindow() {
     isPointerInsideCard: isPointerInsideSystemCard,
     requestIslandMode: requestSystemIslandMode,
     updateMousePassthrough: updateSystemMousePassthrough
+  });
+
+  const systemWindowVisibility = createSystemWindowVisibilityManager({
+    getWindow: () => systemWindow,
+    isRendererReady: () => systemRendererReady,
+    collapseToIdle: collapseSystemWindowToIdle,
+    reposition: repositionSystemStageWindow,
+    fadeTo: fadeWindowTo,
+    showAndFadeIn,
+    raise: raiseSystemWindowForPointer,
+    restoreHitState: restoreSystemWindowHitState
+  });
+
+  const mainHitTarget = createHitTargetManager({
+    nativeHitShape: NATIVE_HIT_SHAPE,
+    nativeHitShapePadding: NATIVE_HIT_SHAPE_PADDING,
+    collapseHoldMs: COLLAPSE_HIT_AREA_HOLD_MS,
+    getWindow: () => mainWindow,
+    getCurrentMode: () => currentMode,
+    getLocalRect: getIslandLocalRect,
+    getScreenRect: getIslandRect,
+    getModeArea,
+    getCursorPoint: () => screen.getCursorScreenPoint(),
+    pointInRect
+  });
+
+  const systemHitTarget = createHitTargetManager({
+    nativeHitShape: NATIVE_HIT_SHAPE,
+    nativeHitShapePadding: NATIVE_HIT_SHAPE_PADDING,
+    collapseHoldMs: COLLAPSE_HIT_AREA_HOLD_MS,
+    getWindow: () => systemWindow,
+    getCurrentMode: () => systemCurrentMode,
+    getLocalRect: getSystemIslandLocalRect,
+    getScreenRect: getSystemIslandRect,
+    getModeArea,
+    getCursorPoint: () => screen.getCursorScreenPoint(),
+    pointInRect
   });
 
   function handleMainRendererReady() {
@@ -1185,8 +1025,7 @@ function showExistingWindow() {
       raiseSystemWindowForPointer(true);
     } else {
       systemWindow.show();
-      systemWindowParked = true;
-      repositionSystemStageWindow();
+      systemWindowVisibility.parkWithoutFade();
     }
 
     startSystemHoverDetection();

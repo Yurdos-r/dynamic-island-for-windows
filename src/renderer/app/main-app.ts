@@ -5,12 +5,11 @@ import {
   buildSystemCapsule,
   buildSystemCard,
   normalizeSystemSnapshot,
-  renderSystemIcons,
-  syncSystemView
+  renderSystemIcons
 } from "../system-view";
 import { createElement, createIcon } from "./dom";
 import { lucideIcons } from "./icons";
-import type { ClipboardItem, ClipboardSnapshot, LyricLine, PrivacySnapshot, SettingsPage, TrackState } from "./state";
+import type { AppState, ClipboardItem, ClipboardSnapshot, LyricLine, PrivacySnapshot, SettingsPage, TrackState } from "./state";
 import {
   getAvailableCardModesForState,
   isCapsuleMode as isCapsuleModeFromController,
@@ -45,7 +44,8 @@ import {
   readStoredGlassIntensityValue,
   readStoredGlassStyleValue
 } from "./controllers/settings-controller";
-import { createClipboardRow } from "./views/clipboard-view";
+import { registerIslandApiListeners, registerRendererEvents } from "./event-binder";
+import { renderLyricsListView, prewarmExpandedLayerView, syncRendererView } from "./view-sync";
 import { appendMediaControls } from "./views/media-view";
 import { buildSettingsLayer } from "./views/settings-view";
 import {
@@ -140,6 +140,85 @@ let priorityTransitionStageTimer: number | undefined;
 let priorityTransitionSettleTimer: number | undefined;
 let pendingPrivacySnapshot: PrivacySnapshot | undefined;
 let privacyState: PrivacySnapshot = createEmptyPrivacySnapshot();
+
+function createAppStateRuntime(): AppState {
+  return {
+    get mode() {
+      return mode;
+    },
+    set mode(value: IslandMode) {
+      mode = value;
+    },
+    get glassStyle() {
+      return glassStyle;
+    },
+    set glassStyle(value: GlassStyle) {
+      glassStyle = value;
+    },
+    get glassIntensity() {
+      return glassIntensity;
+    },
+    set glassIntensity(value: GlassIntensity) {
+      glassIntensity = value;
+    },
+    get settingsReturnMode() {
+      return settingsReturnMode;
+    },
+    set settingsReturnMode(value: IslandMode) {
+      settingsReturnMode = value;
+    },
+    get settingsPage() {
+      return settingsPage;
+    },
+    set settingsPage(value: SettingsPage) {
+      settingsPage = value;
+    },
+    get layout() {
+      return layout;
+    },
+    set layout(value: IslandLayout) {
+      layout = value;
+    },
+    get systemMonitorEnabled() {
+      return systemMonitorEnabled;
+    },
+    set systemMonitorEnabled(value: boolean) {
+      systemMonitorEnabled = value;
+    },
+    get track() {
+      return track;
+    },
+    set track(value: TrackState) {
+      track = value;
+    },
+    get progressSeconds() {
+      return progressSeconds;
+    },
+    set progressSeconds(value: number) {
+      progressSeconds = value;
+    },
+    get lyrics() {
+      return lyrics;
+    },
+    set lyrics(value: LyricLine[]) {
+      lyrics = value;
+    },
+    get privacyState() {
+      return privacyState;
+    },
+    set privacyState(value: PrivacySnapshot) {
+      privacyState = value;
+    },
+    get clipboardSnapshot() {
+      return clipboardSnapshot;
+    },
+    set clipboardSnapshot(value: ClipboardSnapshot) {
+      clipboardSnapshot = value;
+    }
+  };
+}
+
+const appState = createAppStateRuntime();
 
 function isGlassStyle(value: unknown): value is GlassStyle {
   return isGlassStyleValue(value);
@@ -1127,374 +1206,99 @@ function queueSync() {
   });
 }
 
-function setText(selector: string, value: string) {
-  app.querySelectorAll<HTMLElement>(selector).forEach((element) => {
-    if (element.textContent !== value) {
-      element.textContent = value;
-    }
-  });
+function createViewSyncContext() {
+  return {
+    app,
+    get track() { return track; },
+    set track(value: TrackState) { track = value; },
+    get progressSeconds() { return progressSeconds; },
+    set progressSeconds(value: number) { progressSeconds = value; },
+    get lyrics() { return lyrics; },
+    set lyrics(value: LyricLine[]) { lyrics = value; },
+    get systemMediaActive() { return systemMediaActive; },
+    set systemMediaActive(value: boolean) { systemMediaActive = value; },
+    get lastLyricsDataKey() { return lastLyricsDataKey; },
+    set lastLyricsDataKey(value: string) { lastLyricsDataKey = value; },
+    get lyricsCenterFrame() { return lyricsCenterFrame; },
+    set lyricsCenterFrame(value: number) { lyricsCenterFrame = value; },
+    get mode() { return mode; },
+    set mode(value: IslandMode) { mode = value; },
+    get glassStyle() { return glassStyle; },
+    set glassStyle(value: GlassStyle) { glassStyle = value; },
+    get glassIntensity() { return glassIntensity; },
+    set glassIntensity(value: GlassIntensity) { glassIntensity = value; },
+    get playing() { return playing; },
+    set playing(value: boolean) { playing = value; },
+    get favorited() { return favorited; },
+    set favorited(value: boolean) { favorited = value; },
+    get draggingProgress() { return draggingProgress; },
+    set draggingProgress(value: boolean) { draggingProgress = value; },
+    get mediaEntering() { return mediaEntering; },
+    set mediaEntering(value: boolean) { mediaEntering = value; },
+    get mediaExiting() { return mediaExiting; },
+    set mediaExiting(value: boolean) { mediaExiting = value; },
+    get capsuleAppearing() { return capsuleAppearing; },
+    set capsuleAppearing(value: boolean) { capsuleAppearing = value; },
+    get capsuleDisappearing() { return capsuleDisappearing; },
+    set capsuleDisappearing(value: boolean) { capsuleDisappearing = value; },
+    get privacyState() { return privacyState; },
+    set privacyState(value: PrivacySnapshot) { privacyState = value; },
+    get priorityTransition() { return priorityTransition; },
+    set priorityTransition(value: string) { priorityTransition = value; },
+    get priorityTransitionStage() { return priorityTransitionStage; },
+    set priorityTransitionStage(value: string) { priorityTransitionStage = value; },
+    get clipboardPromptVisible() { return clipboardPromptVisible; },
+    set clipboardPromptVisible(value: boolean) { clipboardPromptVisible = value; },
+    get settingsPage() { return settingsPage; },
+    set settingsPage(value: SettingsPage) { settingsPage = value; },
+    get layout() { return layout; },
+    set layout(value: IslandLayout) { layout = value; },
+    get systemMonitorEnabled() { return systemMonitorEnabled; },
+    set systemMonitorEnabled(value: boolean) { systemMonitorEnabled = value; },
+    get systemSnapshot() { return systemSnapshot; },
+    set systemSnapshot(value: SystemSnapshot) { systemSnapshot = value; },
+    get privacyExpanded() { return privacyExpanded; },
+    set privacyExpanded(value: boolean) { privacyExpanded = value; },
+    get clipboardSnapshot() { return clipboardSnapshot; },
+    set clipboardSnapshot(value: ClipboardSnapshot) { clipboardSnapshot = value; },
+    get clipboardAccepting() { return clipboardAccepting; },
+    set clipboardAccepting(value: boolean) { clipboardAccepting = value; },
+    get clipboardAcceptPreview() { return clipboardAcceptPreview; },
+    set clipboardAcceptPreview(value: string) { clipboardAcceptPreview = value; },
+    get clipboardListRenderKey() { return clipboardListRenderKey; },
+    set clipboardListRenderKey(value: string) { clipboardListRenderKey = value; },
+    get clipboardDeleteDialogItemId() { return clipboardDeleteDialogItemId; },
+    set clipboardDeleteDialogItemId(value: string) { clipboardDeleteDialogItemId = value; },
+    get expandedLayerPrewarmed() { return expandedLayerPrewarmed; },
+    set expandedLayerPrewarmed(value: boolean) { expandedLayerPrewarmed = value; },
+    getDisplayedLyrics,
+    getActiveLyricIndex,
+    getAvailableCardModes,
+    hasClipboardItems,
+    isIdleSystemActive,
+    formatTime,
+    progressPercent,
+    getClipboardPreviewText,
+    getPendingClipboardItem,
+    getAcceptedClipboardItem,
+    formatClipboardTime,
+    getClipboardItemById,
+    isCardMode,
+    getPrivacyLabel,
+    getPrivacyDetailText
+  };
 }
 
 function renderLyricsList() {
-  const lyricsList = app.querySelector<HTMLElement>(".lyrics-list");
-  if (!lyricsList) {
-    return;
-  }
-
-  let lyricsInner = lyricsList.querySelector<HTMLElement>(".lyrics-list-inner");
-  if (!lyricsInner) {
-    lyricsInner = createElement("div", { className: "lyrics-list-inner" });
-    lyricsList.replaceChildren(lyricsInner);
-  }
-
-  const displayedLyrics = getDisplayedLyrics();
-  const renderKey = displayedLyrics
-    .map((line) => [line.timeMs, line.text, line.translation || ""].join("|"))
-    .join("~");
-
-  if (renderKey !== lastLyricsDataKey) {
-    lastLyricsDataKey = renderKey;
-    lyricsInner.replaceChildren(
-      ...displayedLyrics.map((line, index) => {
-        const lyricLine = createElement("div", {
-          className: "lyric-line",
-          attributes: {
-            role: "listitem"
-          },
-          dataset: {
-            lyricIndex: index.toString()
-          }
-        });
-        const textWrap = createElement("strong");
-        textWrap.append(createElement("span", { className: "lyric-text", text: line.text }));
-
-        if (line.translation) {
-          textWrap.append(createElement("small", { text: line.translation }));
-        }
-
-        lyricLine.append(textWrap);
-        return lyricLine;
-      })
-    );
-  }
-
-  syncLyricsState();
-}
-
-function queueLyricsCentering() {
-  if (lyricsCenterFrame) {
-    window.cancelAnimationFrame(lyricsCenterFrame);
-  }
-
-  lyricsCenterFrame = window.requestAnimationFrame(() => {
-    lyricsCenterFrame = 0;
-    centerActiveLyric();
-  });
-}
-
-function centerActiveLyric() {
-  const lyricsList = app.querySelector<HTMLElement>(".lyrics-list");
-  const lyricsInner = lyricsList?.querySelector<HTMLElement>(".lyrics-list-inner");
-  if (!lyricsList || !lyricsInner) {
-    return;
-  }
-
-  const activeIndex = lyrics.length ? getActiveLyricIndex() : 0;
-  const activeLine = lyricsInner.querySelector<HTMLElement>(`.lyric-line[data-lyric-index="${activeIndex}"]`);
-  if (!activeLine) {
-    lyricsInner.style.setProperty("--lyrics-shift", "0px");
-    return;
-  }
-
-  const listCenter = lyricsList.clientHeight / 2;
-  const activeCenter = activeLine.offsetTop + activeLine.offsetHeight / 2;
-  lyricsInner.style.setProperty("--lyrics-shift", `${(listCenter - activeCenter).toFixed(2)}px`);
-}
-
-function syncLyricsState() {
-  const lyricsInner = app.querySelector<HTMLElement>(".lyrics-list-inner");
-  if (!lyricsInner) {
-    return;
-  }
-
-  const activeIndex = lyrics.length ? getActiveLyricIndex() : 0;
-  lyricsInner.querySelectorAll<HTMLElement>(".lyric-line").forEach((line, index) => {
-    const isActive = index === activeIndex;
-    const distance = Math.abs(index - activeIndex);
-    const depth = Math.min(distance, 5);
-    const scale = Math.max(0.78, 1.08 - depth * 0.055);
-    const opacity = isActive ? 1 : Math.max(0.16, 0.78 - depth * 0.13);
-    const blur = isActive ? 0 : Math.min(4.8, 0.85 + depth * 0.68);
-
-    line.classList.toggle("active", isActive);
-    line.dataset.active = isActive ? "true" : "false";
-    line.dataset.distance = depth.toString();
-    line.style.setProperty("--lyric-scale", scale.toFixed(3));
-    line.style.setProperty("--lyric-opacity", opacity.toFixed(3));
-    line.style.setProperty("--lyric-blur", `${blur.toFixed(2)}px`);
-
-    if (isActive) {
-      line.setAttribute("aria-current", "true");
-    } else {
-      line.removeAttribute("aria-current");
-    }
-  });
-
-  queueLyricsCentering();
+  renderLyricsListView(createViewSyncContext());
 }
 
 function syncUi() {
-  const cardModes = getAvailableCardModes();
-  const cardIndex = cardModes.indexOf(mode);
-  app.dataset.mode = mode;
-  app.dataset.glass = glassStyle;
-  app.dataset.glassIntensity = glassIntensity;
-  app.dataset.playing = playing ? "true" : "false";
-  app.dataset.favorited = favorited ? "true" : "false";
-  app.dataset.progressDragging = draggingProgress ? "true" : "false";
-  app.dataset.mediaActive = systemMediaActive || mediaEntering || mediaExiting ? "true" : "false";
-  app.dataset.mediaEntering = mediaEntering ? "true" : "false";
-  app.dataset.mediaExiting = mediaExiting ? "true" : "false";
-  app.dataset.capsuleAppearing = capsuleAppearing ? "true" : "false";
-  app.dataset.capsuleDisappearing = capsuleDisappearing ? "true" : "false";
-  app.dataset.privacyActive = privacyState.active ? "true" : "false";
-  app.dataset.privacyKind = privacyState.kind;
-  app.dataset.priorityTransition = priorityTransition;
-  app.dataset.priorityStage = priorityTransitionStage;
-  app.dataset.clipboardPrompt = clipboardPromptVisible ? "true" : "false";
-  app.dataset.clipboardHasItems = hasClipboardItems() ? "true" : "false";
-  app.dataset.cardCount = cardModes.length.toString();
-  app.dataset.cardIndex = cardIndex >= 0 ? cardIndex.toString() : "-1";
-  app.dataset.settingsPage = settingsPage;
-  app.dataset.layout = layout;
-  app.dataset.systemMonitor = systemMonitorEnabled ? "true" : "false";
-  app.dataset.idleSystem = isIdleSystemActive() ? "true" : "false";
-  app.dataset.systemState = systemSnapshot.state;
-
-  setText('[data-field="track-title"]', track.title);
-  setText('[data-field="track-artist"]', track.artist);
-  setText('[data-field="elapsed-time"]', formatTime(progressSeconds));
-  setText('[data-field="duration-time"]', formatTime(track.durationSeconds));
-  renderLyricsList();
-
-  const progressTrack = app.querySelector<HTMLElement>(".progress-track");
-  progressTrack?.setAttribute("aria-valuemax", track.durationSeconds.toString());
-  progressTrack?.setAttribute("aria-valuenow", Math.round(progressSeconds).toString());
-  progressTrack?.setAttribute("aria-valuetext", `${formatTime(progressSeconds)} / ${formatTime(track.durationSeconds)}`);
-
-  const progressFill = app.querySelector<HTMLElement>('[data-field="progress-fill"]');
-  if (progressFill) {
-    progressFill.style.width = progressPercent();
-  }
-
-  const albumArt = app.querySelector<HTMLElement>(".shared-album-art");
-  if (albumArt) {
-    albumArt.dataset.hasCover = track.cover ? "true" : "false";
-    albumArt.style.backgroundImage = track.cover ? `url("${track.cover}")` : "";
-  }
-
-  app.querySelectorAll<HTMLButtonElement>(".play-toggle").forEach((button) => {
-    button.setAttribute("aria-label", playing ? "暂停" : "播放");
-  });
-
-  app.querySelectorAll<HTMLButtonElement>('[data-action="favorite-track"]').forEach((button) => {
-    button.setAttribute("aria-pressed", favorited ? "true" : "false");
-  });
-
-  syncPrivacyStrip();
-  syncClipboardSurface();
-  syncSettingsSurface();
-  syncSystemView(app, systemSnapshot);
-  syncCardPager(cardModes, cardIndex);
-}
-
-function syncSettingsSurface() {
-  app.querySelectorAll<HTMLButtonElement>('.settings-option[data-action="set-glass"]').forEach((option) => {
-    const isActive = option.dataset.glass === glassStyle;
-    option.setAttribute("aria-checked", isActive ? "true" : "false");
-  });
-  app.querySelectorAll<HTMLButtonElement>(".settings-intensity-option").forEach((option) => {
-    const isActive = option.dataset.intensity === glassIntensity;
-    option.setAttribute("aria-checked", isActive ? "true" : "false");
-  });
-  app.querySelectorAll<HTMLButtonElement>('.settings-option[data-action="set-layout"]').forEach((option) => {
-    const isActive = option.dataset.layout === layout;
-    option.setAttribute("aria-checked", isActive ? "true" : "false");
-  });
-  app.querySelectorAll<HTMLButtonElement>('[data-action="toggle-system-monitor"]').forEach((toggle) => {
-    toggle.setAttribute("aria-checked", systemMonitorEnabled ? "true" : "false");
-  });
-}
-
-function syncCardPager(cardModes: IslandMode[], cardIndex: number) {
-  const pager = app.querySelector<HTMLElement>(".card-pager");
-  if (!pager) {
-    return;
-  }
-
-  const shouldShow = cardModes.length > 1 && isCardMode();
-  pager.hidden = !shouldShow;
-  pager.replaceChildren(
-    ...cardModes.map((cardMode, index) =>
-      createElement("span", {
-        className: "card-pager-dot",
-        dataset: {
-          cardMode,
-          active: index === cardIndex ? "true" : "false"
-        }
-      })
-    )
-  );
-}
-
-function syncPrivacyStrip() {
-  const privacyStrip = app.querySelector<HTMLButtonElement>(".privacy-strip");
-  if (!privacyStrip) {
-    return;
-  }
-
-  privacyStrip.replaceChildren();
-
-  if (!privacyState.active) {
-    privacyStrip.hidden = true;
-    privacyExpanded = false;
-    return;
-  }
-
-  privacyStrip.hidden = false;
-  const kind = privacyState.kind;
-  const labelText = getPrivacyLabel(kind);
-  const detailText = getPrivacyDetailText(kind);
-  const icon = createElement("span", {
-    className: `privacy-indicator privacy-${kind}`,
-    attributes: {
-      "aria-hidden": "true"
-    }
-  });
-  const copy = createElement("span", {
-    className: "privacy-copy"
-  });
-  const label = createElement("span", {
-    className: "privacy-label",
-    text: labelText
-  });
-  const detail = createElement("span", {
-    className: "privacy-detail",
-    text: detailText
-  });
-
-  if (kind === "microphone") {
-    icon.classList.add("privacy-dot", "privacy-dot-microphone");
-  } else if (kind === "camera") {
-    icon.classList.add("privacy-dot", "privacy-dot-camera");
-  } else if (kind === "location") {
-    icon.classList.add("privacy-location");
-  }
-
-  privacyStrip.setAttribute("aria-expanded", privacyExpanded ? "true" : "false");
-  privacyStrip.setAttribute("aria-label", privacyExpanded ? `${labelText}，${detailText}` : labelText);
-  privacyStrip.title = privacyExpanded ? `${labelText} - ${detailText}` : labelText;
-  copy.append(label, detail);
-  privacyStrip.append(icon, copy);
-}
-
-function syncClipboardSurface() {
-  const promptLayer = app.querySelector<HTMLButtonElement>(".clipboard-prompt-layer");
-  const promptText = app.querySelector<HTMLElement>(".clipboard-prompt-text");
-  const clipboardLayer = app.querySelector<HTMLElement>(".clipboard-layer");
-  const clipboardList = app.querySelector<HTMLElement>(".clipboard-list");
-  const clipboardConfirmPanel = app.querySelector<HTMLElement>(".clipboard-confirm-panel");
-  const clipboardConfirmPreview = app.querySelector<HTMLElement>(".clipboard-confirm-preview");
-  const clipboardConfirmTime = app.querySelector<HTMLElement>(".clipboard-confirm-time");
-  const clipboardClearButton = app.querySelector<HTMLButtonElement>(".clipboard-clear-button");
-  const deleteDialog = app.querySelector<HTMLElement>(".clipboard-delete-dialog");
-  const deletePreview = app.querySelector<HTMLElement>(".clipboard-delete-preview");
-
-  if (
-    !promptLayer ||
-    !promptText ||
-    !clipboardLayer ||
-    !clipboardList ||
-    !clipboardConfirmPanel ||
-    !clipboardConfirmPreview ||
-    !clipboardConfirmTime ||
-    !clipboardClearButton ||
-    !deleteDialog ||
-    !deletePreview
-  ) {
-    return;
-  }
-
-  promptText.textContent = getClipboardPreviewText();
-  promptLayer.hidden = !clipboardPromptVisible || mode !== "clipboard-prompt";
-  clipboardLayer.hidden = mode !== "clipboard" && app.dataset.returningFromClipboard !== "true";
-  const pendingItem = getPendingClipboardItem();
-  const acceptedItem = getAcceptedClipboardItem();
-  const acceptedReady = Boolean(acceptedItem && !clipboardAccepting);
-  const showClipboardConfirmPanel = Boolean(pendingItem || clipboardAccepting || acceptedItem) && mode === "clipboard";
-  const visibleClipboardItems = acceptedItem
-    ? clipboardSnapshot.items.filter((item) => item.id !== acceptedItem.id && item.text !== acceptedItem.text)
-    : clipboardSnapshot.items;
-  const shouldMoveListWithContractingPanel = clipboardAccepting && visibleClipboardItems.length > 0;
-  clipboardConfirmPanel.hidden = !showClipboardConfirmPanel;
-  clipboardConfirmPreview.textContent = pendingItem?.preview || acceptedItem?.preview || clipboardAcceptPreview || "";
-  clipboardConfirmTime.textContent = acceptedItem || pendingItem ? formatClipboardTime((acceptedItem || pendingItem)?.copiedAt || Date.now()) : "";
-  clipboardConfirmPanel.dataset.accepting = clipboardAccepting || acceptedReady ? "true" : "false";
-  clipboardConfirmPanel.dataset.contracting = clipboardAccepting ? "true" : "false";
-  clipboardConfirmPanel.dataset.ready = acceptedReady ? "true" : "false";
-  if (acceptedReady) {
-    clipboardConfirmPanel.dataset.action = "clipboard-copy";
-    clipboardConfirmPanel.dataset.clipboardId = acceptedItem?.id || "";
-  } else {
-    delete clipboardConfirmPanel.dataset.action;
-    delete clipboardConfirmPanel.dataset.clipboardId;
-  }
-  clipboardList.dataset.accepting = clipboardAccepting && !shouldMoveListWithContractingPanel ? "true" : "false";
-  clipboardList.dataset.contractingBelow = shouldMoveListWithContractingPanel ? "true" : "false";
-  clipboardList.hidden =
-    (clipboardAccepting && !shouldMoveListWithContractingPanel) ||
-    (Boolean(pendingItem) && mode === "clipboard" && !acceptedReady && !shouldMoveListWithContractingPanel);
-  clipboardClearButton.hidden = (Boolean(pendingItem) && mode === "clipboard") || clipboardAccepting;
-
-  const clipboardListNextKey = [
-    acceptedItem ? "with-accepted-row" : "normal",
-    visibleClipboardItems.map((item) => `${item.id}:${item.copiedAt}:${item.preview}`).join("|"),
-    !visibleClipboardItems.length && !clipboardAccepting && !acceptedReady ? "empty" : ""
-  ].join("::");
-
-  if (clipboardListRenderKey !== clipboardListNextKey) {
-    clipboardListRenderKey = clipboardListNextKey;
-    clipboardList.replaceChildren(
-      ...visibleClipboardItems.map((item, index) => createClipboardRow(item, index + (acceptedItem ? 1 : 0), formatClipboardTime))
-    );
-
-    if (!visibleClipboardItems.length && !clipboardAccepting && !acceptedReady) {
-      clipboardList.append(
-        createElement("div", {
-          className: "clipboard-empty",
-          text: "暂无剪贴板记录"
-        })
-      );
-    }
-  }
-  if (mode !== "clipboard" || (clipboardDeleteDialogItemId && !getClipboardItemById(clipboardDeleteDialogItemId))) {
-    clipboardDeleteDialogItemId = "";
-  }
-
-  const deleteItem = getClipboardItemById(clipboardDeleteDialogItemId);
-  deleteDialog.hidden = !deleteItem || mode !== "clipboard";
-  deletePreview.textContent = deleteItem?.preview || "";
+  syncRendererView(createViewSyncContext());
 }
 
 function prewarmExpandedLayer() {
-  if (expandedLayerPrewarmed) {
-    return;
-  }
-
-  expandedLayerPrewarmed = true;
-  window.requestAnimationFrame(() => {
-    app.querySelector<HTMLElement>(".expanded-layer")?.getBoundingClientRect();
-  });
+  prewarmExpandedLayerView(createViewSyncContext());
 }
 
 function isTransparentIdleMode(nextMode: IslandMode) {
@@ -1783,413 +1587,160 @@ function scheduleClipboardItemDelete(itemId: string, pointerId: number) {
   }, 650);
 }
 
-app.addEventListener("click", (event) => {
-  const target = event.target as HTMLElement;
-
-  // 长按刚触发设置卡片时，吞掉随之而来的这一次 click，避免误触 idle 的点击逻辑。
-  if (suppressNextClick) {
-    suppressNextClick = false;
-    event.preventDefault();
-    event.stopPropagation();
-    return;
-  }
-
-  const privacyTarget = target.closest<HTMLElement>(".privacy-strip");
-  const interactiveTarget = target.closest<HTMLElement>(
-    ".quick-media-controls, .expanded-media-controls, .media-control-button, .progress-track, .clipboard-row, .clipboard-confirm-panel[data-ready='true'], .clipboard-prompt-layer, .clipboard-delete-dialog"
-  );
-  const islandTarget = target.closest<HTMLElement>(".island-shell");
-  const actionElement = target.closest<HTMLElement>("[data-action]");
-  const action = actionElement?.dataset.action;
-
-  // 设置卡片：中心（hub）+ 三个二级页。点击导航进入子页，返回回中心；
-  // 空白处在 hub 退出回胶囊，在子页则返回 hub。
-  if (mode === "settings") {
-    if (action === "settings-nav") {
-      const page = actionElement?.dataset.page;
-      if (page === "appearance" || page === "layout" || page === "monitor") {
-        setSettingsPage(page);
-      }
-      return;
-    }
-
-    if (action === "settings-back") {
-      setSettingsPage("hub");
-      return;
-    }
-
-    if (action === "set-glass") {
-      const requested = actionElement?.dataset.glass;
-      if (isGlassStyle(requested)) {
-        setGlassStyle(requested);
-      }
-      return;
-    }
-
-    if (action === "set-intensity") {
-      const requested = actionElement?.dataset.intensity;
-      if (isGlassIntensity(requested)) {
-        setGlassIntensity(requested);
-      }
-      return;
-    }
-
-    if (action === "set-layout") {
-      const requested = actionElement?.dataset.layout;
-      if (isLayout(requested)) {
-        setLayout(requested);
-      }
-      return;
-    }
-
-    if (action === "toggle-system-monitor") {
-      setSystemMonitorEnabled(!systemMonitorEnabled);
-      return;
-    }
-
-    // 点击控件以外的空白：子页返回 hub，hub 退出设置。
-    if (!interactiveTarget) {
-      if (settingsPage === "hub") {
-        closeSettings();
-      } else {
-        setSettingsPage("hub");
-      }
-    }
-    return;
-  }
-
-  // 系统监控卡片：点击空白处退出回胶囊（静息态会再次显示系统读数）。
-  if (mode === "system") {
-    closeSystemCard();
-    return;
-  }
-
-  if (privacyTarget && privacyState.active) {
-    togglePrivacyDetail();
-    return;
-  }
-
-  if (action === "set-glass") {
-    const requested = actionElement?.dataset.glass;
-    if (isGlassStyle(requested)) {
-      setGlassStyle(requested);
-    }
-    return;
-  }
-
-  if (action === "clipboard-open-card") {
-    openClipboardCard();
-    return;
-  }
-
-  if (action === "clipboard-accept") {
-    const fromPromptCapsule = Boolean(target.closest(".clipboard-prompt-layer"));
-    void acceptClipboardPrompt(fromPromptCapsule && (systemMediaActive || privacyState.active));
-    return;
-  }
-
-  if (action === "clipboard-reject") {
-    rejectClipboardPrompt();
-    return;
-  }
-
-  if (mode === "clipboard-prompt" && islandTarget && canUseClipboardCard() && getPendingClipboardItem()) {
-    openClipboardCard();
-    return;
-  }
-
-  if (action === "clipboard-clear") {
-    clearAcceptedClipboardSurface();
-    void window.island?.clearClipboardItems();
-    if (mode === "clipboard") {
-      setMode(getClipboardFallbackMode());
-    }
-    return;
-  }
-
-  if (action === "clipboard-delete-cancel") {
-    closeClipboardDeleteDialog();
-    return;
-  }
-
-  if (action === "clipboard-delete-confirm") {
-    confirmClipboardDelete();
-    return;
-  }
-
-  if (action === "clipboard-copy") {
-    const item =
-      clipboardSnapshot.items.find((clipboardItem) => clipboardItem.id === actionElement?.dataset.clipboardId) ||
-      (actionElement?.classList.contains("clipboard-confirm-panel") ? getAcceptedClipboardItem() : undefined);
-    void copyClipboardText(item?.text || "");
-    return;
-  }
-
-  if (islandTarget && !interactiveTarget && privacyState.active && mode === "privacy") {
-    togglePrivacyDetail();
-    return;
-  }
-
-  if (islandTarget && !interactiveTarget && canUseClipboardCard() && getPendingClipboardItem() && !systemMediaActive) {
-    openClipboardCard();
-    return;
-  }
-
-  if (islandTarget && !interactiveTarget && canUseClipboardCard() && hasClipboardItems() && !systemMediaActive) {
-    openClipboardCard();
-    return;
-  }
-
-  if (islandTarget && !interactiveTarget && systemMediaActive) {
-    if (mode === "idle" || mode === "peek") {
-      setMode("hover");
-      return;
-    }
-
-    if (mode === "hover") {
-      setMode("expanded");
-      return;
-    }
-  }
-
-  if (!action) {
-    if (mode === "hover" && target.closest(".hover-layer") && !target.closest(".quick-media-controls")) {
-      setMode("expanded");
-    }
-
-    return;
-  }
-
-  if (action === "open-quick") {
-    if (canUseClipboardCard() && hasClipboardItems() && !systemMediaActive && !privacyState.active) {
-      openClipboardCard();
-    } else if (systemMediaActive) {
-      setMode("hover");
-    } else if (isIdleSystemActive()) {
-      openSystemCard();
-    }
-  }
-
-  if (action === "open-system") {
-    openSystemCard();
-  }
-
-  if (action === "expand") {
-    setMode("expanded");
-  }
-
-  if (action === "idle") {
-    setMode("idle");
-  }
-
-  if (action === "toggle-play") {
-    togglePlay();
-  }
-
-  if (action === "previous-track") {
-    skipTrack("previous-track");
-  }
-
-  if (action === "next-track") {
-    skipTrack("next-track");
-  }
-
-  if (action === "favorite-track") {
-    void toggleFavorite();
-  }
-});
-
-app.addEventListener(
-  "wheel",
-  (event) => {
-    if (!isCardMode() || getAvailableCardModes().length < 2) {
-      return;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-    switchCardPage(event.deltaY || event.deltaX || 1);
-  },
-  { passive: false }
-);
-
-app.addEventListener("pointerout", (event) => {
-  const target = event.target as HTMLElement;
-  const privacyTarget = target.closest<HTMLElement>(".privacy-strip");
-  if (!privacyTarget) {
-    return;
-  }
-
-  const relatedTarget = event.relatedTarget as Node | null;
-  if (relatedTarget && privacyTarget.contains(relatedTarget)) {
-    return;
-  }
-
-  collapsePrivacyDetail();
-});
-
-window.addEventListener("keydown", (event) => {
-  const activeElement = document.activeElement as HTMLElement | null;
-
-  if (activeElement?.closest(".clipboard-prompt-layer") && (event.key === "Enter" || event.key === " ")) {
-    event.preventDefault();
-    openClipboardCard();
-    return;
-  }
-
-  if (!privacyState.active || !activeElement?.closest(".privacy-strip")) {
-    return;
-  }
-
-  if (event.key === "Enter" || event.key === " ") {
-    event.preventDefault();
-    togglePrivacyDetail();
-  }
-});
-
-app.addEventListener("pointerdown", (event) => {
-  const target = event.target as HTMLElement;
-
-  // 长按 idle/peek 胶囊进入外观设置。只在静息胶囊态触发，避开媒体/隐私/剪贴板前台。
-  if ((mode === "idle" || mode === "peek") && target.closest(".island-shell")) {
-    scheduleSettingsLongPress(event.pointerId);
-  }
-
-  const clipboardRow = target.closest<HTMLElement>(".clipboard-row, .clipboard-confirm-panel[data-ready='true']");
-  if (clipboardRow && mode === "clipboard") {
-    scheduleClipboardItemDelete(clipboardRow.dataset.clipboardId || "", event.pointerId);
-  }
-
-  const progressTrack = target.closest<HTMLElement>(".progress-track");
-
-  if (mode !== "expanded" || !progressTrack) {
-    return;
-  }
-
-  event.preventDefault();
-  draggingProgress = true;
-  pendingSeekSeconds = getProgressSecondsFromPointer(event, progressTrack);
-  progressTrack.setPointerCapture(event.pointerId);
-  void setRendererInteracting(true);
-  setProgressPreview(pendingSeekSeconds);
-  queueSync();
-});
-
-app.addEventListener("pointermove", (event) => {
-  if (clipboardDeletePointerId === event.pointerId) {
-    clearClipboardDeleteTimer();
-  }
-
-  if (!draggingProgress) {
-    return;
-  }
-
-  const progressTrack = app.querySelector<HTMLElement>(".progress-track");
-
-  if (!progressTrack) {
-    return;
-  }
-
-  event.preventDefault();
-  pendingSeekSeconds = getProgressSecondsFromPointer(event, progressTrack);
-  setProgressPreview(pendingSeekSeconds);
-});
-
-app.addEventListener("pointerup", (event) => {
-  if (settingsLongPressPointerId === event.pointerId) {
-    clearSettingsLongPress();
-  }
-
-  if (clipboardDeletePointerId === event.pointerId) {
-    clearClipboardDeleteTimer();
-  }
-
-  if (!draggingProgress) {
-    return;
-  }
-
-  const progressTrack = app.querySelector<HTMLElement>(".progress-track");
-  if (progressTrack?.hasPointerCapture(event.pointerId)) {
-    progressTrack.releasePointerCapture(event.pointerId);
-  }
-
-  draggingProgress = false;
-  const commitSeconds = pendingSeekSeconds ?? progressSeconds;
-  pendingSeekSeconds = undefined;
-  void commitProgress(commitSeconds);
-  void setRendererInteracting(false);
-  queueSync();
-});
-
-app.addEventListener("pointercancel", (event) => {
-  if (settingsLongPressPointerId === event.pointerId) {
-    clearSettingsLongPress();
-  }
-
-  if (clipboardDeletePointerId === event.pointerId) {
-    clearClipboardDeleteTimer();
-  }
-
-  if (!draggingProgress) {
-    return;
-  }
-
-  const progressTrack = app.querySelector<HTMLElement>(".progress-track");
-  if (progressTrack?.hasPointerCapture(event.pointerId)) {
-    progressTrack.releasePointerCapture(event.pointerId);
-  }
-
-  draggingProgress = false;
-  pendingSeekSeconds = undefined;
-  void setRendererInteracting(false);
-  queueSync();
-});
-
-window.addEventListener("keydown", (event) => {
-  const target = event.target as HTMLElement;
-
-  if (mode === "expanded" && target.closest(".progress-track")) {
-    if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      void commitProgress(progressSeconds - 5);
-      return;
-    }
-
-    if (event.key === "ArrowRight") {
-      event.preventDefault();
-      void commitProgress(progressSeconds + 5);
-      return;
-    }
-
-    if (event.key === "Home") {
-      event.preventDefault();
-      void commitProgress(0);
-      return;
-    }
-
-    if (event.key === "End") {
-      event.preventDefault();
-      void commitProgress(track.durationSeconds);
-      return;
-    }
-  }
-
-  if (event.key === "Escape") {
-    setMode("idle");
-  }
-});
-
-window.island?.onModeRequest((requestedMode) => {
+function createRendererEventContext() {
+  return {
+    app,
+    island: window.island,
+    get suppressNextClick() {
+      return suppressNextClick;
+    },
+    set suppressNextClick(value: boolean) {
+      suppressNextClick = value;
+    },
+    get mode() {
+      return appState.mode;
+    },
+    set mode(value: IslandMode) {
+      appState.mode = value;
+    },
+    get settingsPage() {
+      return appState.settingsPage;
+    },
+    set settingsPage(value: SettingsPage) {
+      appState.settingsPage = value;
+    },
+    get systemMonitorEnabled() {
+      return systemMonitorEnabled;
+    },
+    set systemMonitorEnabled(value: boolean) {
+      systemMonitorEnabled = value;
+    },
+    get privacyState() {
+      return appState.privacyState;
+    },
+    set privacyState(value: PrivacySnapshot) {
+      appState.privacyState = value;
+    },
+    get systemMediaActive() {
+      return systemMediaActive;
+    },
+    set systemMediaActive(value: boolean) {
+      systemMediaActive = value;
+    },
+    get clipboardSnapshot() {
+      return appState.clipboardSnapshot;
+    },
+    set clipboardSnapshot(value: ClipboardSnapshot) {
+      appState.clipboardSnapshot = value;
+    },
+    get clipboardAcceptedItem() {
+      return clipboardAcceptedItem;
+    },
+    set clipboardAcceptedItem(value: ClipboardItem | undefined) {
+      clipboardAcceptedItem = value;
+    },
+    get clipboardDeletePointerId() {
+      return clipboardDeletePointerId;
+    },
+    set clipboardDeletePointerId(value: number | undefined) {
+      clipboardDeletePointerId = value;
+    },
+    get settingsLongPressPointerId() {
+      return settingsLongPressPointerId;
+    },
+    set settingsLongPressPointerId(value: number | undefined) {
+      settingsLongPressPointerId = value;
+    },
+    get draggingProgress() {
+      return draggingProgress;
+    },
+    set draggingProgress(value: boolean) {
+      draggingProgress = value;
+    },
+    get pendingSeekSeconds() {
+      return pendingSeekSeconds;
+    },
+    set pendingSeekSeconds(value: number | undefined) {
+      pendingSeekSeconds = value;
+    },
+    get progressSeconds() {
+      return appState.progressSeconds;
+    },
+    set progressSeconds(value: number) {
+      appState.progressSeconds = value;
+    },
+    get track() {
+      return appState.track;
+    },
+    set track(value: TrackState) {
+      appState.track = value;
+    },
+    get playing() {
+      return playing;
+    },
+    set playing(value: boolean) {
+      playing = value;
+    },
+    get lastPlaybackSyncTime() {
+      return lastPlaybackSyncTime;
+    },
+    set lastPlaybackSyncTime(value: number) {
+      lastPlaybackSyncTime = value;
+    },
+    setSettingsPage,
+    isGlassStyle,
+    setGlassStyle,
+    isGlassIntensity,
+    setGlassIntensity,
+    isLayout,
+    setLayout,
+    setSystemMonitorEnabled,
+    closeSettings,
+    closeSystemCard,
+    togglePrivacyDetail,
+    openClipboardCard,
+    acceptClipboardPrompt,
+    rejectClipboardPrompt,
+    canUseClipboardCard,
+    getPendingClipboardItem,
+    clearAcceptedClipboardSurface,
+    setMode,
+    getClipboardFallbackMode,
+    closeClipboardDeleteDialog,
+    confirmClipboardDelete,
+    getAcceptedClipboardItem,
+    copyClipboardText,
+    hasClipboardItems,
+    isIdleSystemActive,
+    openSystemCard,
+    togglePlay,
+    skipTrack,
+    toggleFavorite,
+    isCardMode,
+    getAvailableCardModes,
+    switchCardPage,
+    collapsePrivacyDetail,
+    scheduleSettingsLongPress,
+    scheduleClipboardItemDelete,
+    getProgressSecondsFromPointer,
+    setRendererInteracting,
+    setProgressPreview,
+    queueSync,
+    clearClipboardDeleteTimer,
+    clearSettingsLongPress,
+    commitProgress,
+    setProgress
+  };
+}
+
+registerRendererEvents(createRendererEventContext());
+
+function handleModeRequest(requestedMode: IslandMode) {
   setMode(requestedMode, false);
-});
 
-window.island?.onAvoidScale((scale) => {
-  const safeScale = Number.isFinite(scale) ? Math.max(0.5, Math.min(1, scale)) : 1;
-  app.style.setProperty("--avoid-scale", safeScale.toFixed(4));
-  app.dataset.avoiding = safeScale < 0.999 ? "true" : "false";
-});
+}
 
-window.island?.onMediaUpdate((snapshot) => {
+function handleMediaUpdate(snapshot: MediaSnapshot) {
   if (!snapshot.active) {
     const hadVisibleMedia = systemMediaActive || mediaExiting;
 
@@ -2241,9 +1792,10 @@ window.island?.onMediaUpdate((snapshot) => {
     startMediaEnterTransition();
   }
   queueSync();
-});
 
-window.island?.onPrivacyUpdate((snapshot) => {
+}
+
+function handlePrivacyUpdate(snapshot: PrivacySnapshot) {
   const previousPrivacyActive = wasPrivacyActive;
   const previousMode = mode;
   const nextPrivacyState: PrivacySnapshot = {
@@ -2318,9 +1870,10 @@ window.island?.onPrivacyUpdate((snapshot) => {
   }
 
   queueSync();
-});
 
-window.island?.onClipboardUpdate((snapshot) => {
+}
+
+function handleClipboardUpdate(snapshot: ClipboardSnapshot) {
   const previousPendingId = clipboardSnapshot.pending?.id || "";
   const nextClipboardSnapshot = normalizeClipboardSnapshot(snapshot);
   const nextPendingId = nextClipboardSnapshot.pending?.id || "";
@@ -2342,27 +1895,16 @@ window.island?.onClipboardUpdate((snapshot) => {
   } else {
     queueSync();
   }
-});
 
-renderTemplate();
-applyGlassIntensityToFilter();
-syncUi();
-prewarmExpandedLayer();
+}
 
-window.island?.onSystemUpdate((snapshot) => {
+function handleSystemUpdate(snapshot: SystemSnapshot) {
   systemSnapshot = normalizeSystemSnapshot(snapshot);
   queueSync();
-});
 
-window.island?.onLayoutChanged((settings) => {
-  applyUiSettings(settings);
-});
+}
 
-void window.island?.getUiSettings().then((settings) => {
-  applyUiSettings(settings);
-});
-
-window.setInterval(() => {
+function handlePlaybackTick() {
   const now = window.performance.now();
 
   if (systemMediaActive && playing && !draggingProgress) {
@@ -2371,5 +1913,22 @@ window.setInterval(() => {
   }
 
   lastPlaybackSyncTime = now;
-}, 250);
-window.island?.ready();
+
+}
+
+renderTemplate();
+applyGlassIntensityToFilter();
+syncUi();
+prewarmExpandedLayer();
+
+registerIslandApiListeners({
+  app,
+  island: window.island,
+  onModeRequest: handleModeRequest,
+  onMediaUpdate: handleMediaUpdate,
+  onPrivacyUpdate: handlePrivacyUpdate,
+  onClipboardUpdate: handleClipboardUpdate,
+  onSystemUpdate: handleSystemUpdate,
+  onLayoutChanged: applyUiSettings,
+  onPlaybackTick: handlePlaybackTick
+});
