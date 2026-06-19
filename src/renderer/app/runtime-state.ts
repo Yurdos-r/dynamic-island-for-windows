@@ -1,4 +1,4 @@
-import type { AppState, ClipboardItem, ClipboardSnapshot, LyricLine, PrivacySnapshot, SettingsPage, TrackState } from "./state";
+import type { ClipboardItem, ClipboardSnapshot, LyricLine, PrivacySnapshot, SettingsPage, TrackState } from "./state";
 import { createDefaultTrack, createEmptyClipboardSnapshot, createEmptyPrivacySnapshot } from "./state";
 
 export interface RendererRuntimeState {
@@ -133,82 +133,5 @@ export function createRendererRuntimeState(options: RendererRuntimeStateOptions)
     priorityTransitionSettleTimer: undefined,
     pendingPrivacySnapshot: undefined,
     privacyState: createEmptyPrivacySnapshot()
-  };
-}
-
-export function createAppStateRuntime(runtime: RendererRuntimeState): AppState {
-  return {
-    get mode() {
-      return runtime.mode;
-    },
-    set mode(value: IslandMode) {
-      runtime.mode = value;
-    },
-    get glassStyle() {
-      return runtime.glassStyle;
-    },
-    set glassStyle(value: GlassStyle) {
-      runtime.glassStyle = value;
-    },
-    get glassIntensity() {
-      return runtime.glassIntensity;
-    },
-    set glassIntensity(value: GlassIntensity) {
-      runtime.glassIntensity = value;
-    },
-    get settingsReturnMode() {
-      return runtime.settingsReturnMode;
-    },
-    set settingsReturnMode(value: IslandMode) {
-      runtime.settingsReturnMode = value;
-    },
-    get settingsPage() {
-      return runtime.settingsPage;
-    },
-    set settingsPage(value: SettingsPage) {
-      runtime.settingsPage = value;
-    },
-    get layout() {
-      return runtime.layout;
-    },
-    set layout(value: IslandLayout) {
-      runtime.layout = value;
-    },
-    get systemMonitorEnabled() {
-      return runtime.systemMonitorEnabled;
-    },
-    set systemMonitorEnabled(value: boolean) {
-      runtime.systemMonitorEnabled = value;
-    },
-    get track() {
-      return runtime.track;
-    },
-    set track(value: TrackState) {
-      runtime.track = value;
-    },
-    get progressSeconds() {
-      return runtime.progressSeconds;
-    },
-    set progressSeconds(value: number) {
-      runtime.progressSeconds = value;
-    },
-    get lyrics() {
-      return runtime.lyrics;
-    },
-    set lyrics(value: LyricLine[]) {
-      runtime.lyrics = value;
-    },
-    get privacyState() {
-      return runtime.privacyState;
-    },
-    set privacyState(value: PrivacySnapshot) {
-      runtime.privacyState = value;
-    },
-    get clipboardSnapshot() {
-      return runtime.clipboardSnapshot;
-    },
-    set clipboardSnapshot(value: ClipboardSnapshot) {
-      runtime.clipboardSnapshot = value;
-    }
   };
 }

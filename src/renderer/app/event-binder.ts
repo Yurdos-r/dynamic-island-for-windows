@@ -1,6 +1,6 @@
 import type { ClipboardItem, ClipboardSnapshot, PrivacySnapshot, SettingsPage, TrackState } from "./state";
 
-interface RendererEventContext {
+export interface RendererEventContext {
   app: HTMLElement;
   island?: Window["island"];
   suppressNextClick: boolean;

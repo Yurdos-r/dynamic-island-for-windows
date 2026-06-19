@@ -3,7 +3,7 @@ import { createElement } from "./dom";
 import type { ClipboardItem, ClipboardSnapshot, LyricLine, PrivacySnapshot, SettingsPage, TrackState } from "./state";
 import { createClipboardRow } from "./views/clipboard-view";
 
-interface ViewSyncContext {
+export interface ViewSyncContext {
   [key: string]: any;
   app: HTMLElement;
   track: TrackState;
@@ -423,4 +423,3 @@ export function prewarmExpandedLayerView(context: ViewSyncContext) {
     context.app.querySelector<HTMLElement>(".expanded-layer")?.getBoundingClientRect();
   });
 }
-

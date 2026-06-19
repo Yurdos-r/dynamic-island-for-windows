@@ -26,6 +26,7 @@ const { createWindowFader } = require("./fade-controller");
 const { createHitTargetManager } = require("./hit-target-manager");
 const { createMainHoverController, createSystemHoverController } = require("./hover-controller");
 const { createLayoutTaskbarPolicy } = require("./layout-taskbar-policy");
+const { createPointerWindowController } = require("./pointer-window-controller");
 const { createStageBoundsController } = require("./stage-bounds-controller");
 const { createSystemWindowVisibilityManager } = require("./system-window-visibility");
 const { configureIslandBrowserWindow, createIslandBrowserWindow } = require("./window-factory");
@@ -55,16 +56,10 @@ function createIslandWindowManager(options = {}) {
   let systemRendererReady = false;
   let mediaActive = false;
   let privacyActive = false;
-  let mouseEventsIgnored = false;
-  let systemMouseEventsIgnored = false;
   let rendererInteracting = false;
   let systemRendererInteracting = false;
-  let lastMousePassthroughCheck = 0;
-  let lastSystemMousePassthroughCheck = 0;
   let currentWindowHeight = MIN_ANIMATION_WINDOW_HEIGHT;
   let systemWindowHeight = MIN_ANIMATION_WINDOW_HEIGHT;
-  let lastPointerRaiseAt = 0;
-  let lastSystemPointerRaiseAt = 0;
   let stageWidth = STAGE_SIZE.width;
   let systemStageWidth = STAGE_SIZE.width;
   let taskbarIconLeft = 0;
@@ -254,117 +249,27 @@ function isPointerInsideSystemMouseTarget(padding = 0) {
 }
 
 function setMousePassthrough(ignored) {
-  if (!mainWindow || mainWindow.isDestroyed() || mouseEventsIgnored === ignored) {
-    return;
-  }
-
-  mainWindow.setIgnoreMouseEvents(ignored, { forward: true });
-  mouseEventsIgnored = ignored;
+  mainPointerController.setMousePassthrough(ignored);
 }
 
 function setSystemMousePassthrough(ignored) {
-  if (!systemWindow || systemWindow.isDestroyed() || systemMouseEventsIgnored === ignored) {
-    return;
-  }
-
-  systemWindow.setIgnoreMouseEvents(ignored, { forward: true });
-  systemMouseEventsIgnored = ignored;
+  systemPointerController.setMousePassthrough(ignored);
 }
 
 function raiseWindowForPointer(force = false) {
-  if (!mainWindow || mainWindow.isDestroyed()) {
-    return;
-  }
-
-  // 任务栏隐藏期间不把窗口拉回最上层，否则会盖在全屏应用上。
-  if (!taskbarVisible) {
-    return;
-  }
-
-  const now = Date.now();
-  if (!force && now - lastPointerRaiseAt < RAISE_ON_POINTER_INTERVAL_MS) {
-    return;
-  }
-
-  lastPointerRaiseAt = now;
-  mainWindow.setAlwaysOnTop(true, "screen-saver");
-  mainWindow.moveTop();
+  mainPointerController.raiseForPointer(force);
 }
 
 function raiseSystemWindowForPointer(force = false) {
-  if (!systemWindow || systemWindow.isDestroyed()) {
-    return;
-  }
-
-  // 任务栏隐藏期间不把窗口拉回最上层，否则会盖在全屏应用上。
-  if (!taskbarVisible) {
-    return;
-  }
-
-  const now = Date.now();
-  if (!force && now - lastSystemPointerRaiseAt < RAISE_ON_POINTER_INTERVAL_MS) {
-    return;
-  }
-
-  lastSystemPointerRaiseAt = now;
-  systemWindow.setAlwaysOnTop(true, "screen-saver");
-  systemWindow.moveTop();
+  systemPointerController.raiseForPointer(force);
 }
 
 function updateMousePassthrough(force = false) {
-  if (NATIVE_HIT_SHAPE) {
-    if (rendererReady && isPointerInsideMouseTarget(HOVER_DETECTION.mousePadding)) {
-      raiseWindowForPointer(force);
-    }
-    setMousePassthrough(!rendererReady);
-    return;
-  }
-
-  const now = Date.now();
-  if (!force && now - lastMousePassthroughCheck < HOVER_DETECTION.pollInterval) {
-    return;
-  }
-  lastMousePassthroughCheck = now;
-
-  if (!rendererReady) {
-    setMousePassthrough(true);
-    return;
-  }
-
-  if (rendererInteracting) {
-    setMousePassthrough(false);
-    return;
-  }
-
-  setMousePassthrough(!isPointerInsideMouseTarget(HOVER_DETECTION.mousePadding));
+  mainPointerController.updateMousePassthrough(force);
 }
 
 function updateSystemMousePassthrough(force = false) {
-  if (NATIVE_HIT_SHAPE) {
-    if (systemRendererReady && isPointerInsideSystemMouseTarget(HOVER_DETECTION.mousePadding)) {
-      raiseSystemWindowForPointer(force);
-    }
-    setSystemMousePassthrough(!systemRendererReady);
-    return;
-  }
-
-  const now = Date.now();
-  if (!force && now - lastSystemMousePassthroughCheck < HOVER_DETECTION.pollInterval) {
-    return;
-  }
-  lastSystemMousePassthroughCheck = now;
-
-  if (!systemRendererReady) {
-    setSystemMousePassthrough(true);
-    return;
-  }
-
-  if (systemRendererInteracting) {
-    setSystemMousePassthrough(false);
-    return;
-  }
-
-  setSystemMousePassthrough(!isPointerInsideSystemMouseTarget(HOVER_DETECTION.mousePadding));
+  systemPointerController.updateMousePassthrough(force);
 }
 
 function resizeIsland(mode) {
@@ -808,6 +713,28 @@ function showExistingWindow() {
     getModeArea,
     getCursorPoint: () => screen.getCursorScreenPoint(),
     pointInRect
+  });
+
+  const mainPointerController = createPointerWindowController({
+    nativeHitShape: NATIVE_HIT_SHAPE,
+    hoverDetection: HOVER_DETECTION,
+    raiseIntervalMs: RAISE_ON_POINTER_INTERVAL_MS,
+    getWindow: () => mainWindow,
+    getTaskbarVisible: () => taskbarVisible,
+    getRendererReady: () => rendererReady,
+    getRendererInteracting: () => rendererInteracting,
+    isPointerInsideMouseTarget
+  });
+
+  const systemPointerController = createPointerWindowController({
+    nativeHitShape: NATIVE_HIT_SHAPE,
+    hoverDetection: HOVER_DETECTION,
+    raiseIntervalMs: RAISE_ON_POINTER_INTERVAL_MS,
+    getWindow: () => systemWindow,
+    getTaskbarVisible: () => taskbarVisible,
+    getRendererReady: () => systemRendererReady,
+    getRendererInteracting: () => systemRendererInteracting,
+    isPointerInsideMouseTarget: isPointerInsideSystemMouseTarget
   });
 
   const mainStageBounds = createStageBoundsController({

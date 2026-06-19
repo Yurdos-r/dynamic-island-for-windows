@@ -1,10 +1,11 @@
 import "../styles.css";
+import { EMPTY_SYSTEM_SNAPSHOT } from "../system-view";
+import { createRendererRuntimeState } from "./runtime-state";
+import type { PrivacySnapshot } from "./state";
 import {
-  EMPTY_SYSTEM_SNAPSHOT,
-  normalizeSystemSnapshot
-} from "../system-view";
-import { createAppStateRuntime, createRendererRuntimeState } from "./runtime-state";
-import type { ClipboardItem, ClipboardSnapshot, LyricLine, PrivacySnapshot, SettingsPage, TrackState } from "./state";
+  createRendererEventContext,
+  createViewSyncContext
+} from "./context-factories";
 import {
   getAvailableCardModesForState,
   isCapsuleMode as isCapsuleModeFromController,
@@ -26,10 +27,7 @@ import {
   getPrivacyDisplayName as getPrivacyDisplayNameFromController,
   getPrivacyLabelForKind
 } from "./controllers/privacy-controller";
-import {
-  formatClipboardTimestamp,
-  normalizeClipboardSnapshot as normalizeClipboardSnapshotFromController
-} from "./controllers/clipboard-controller";
+import { formatClipboardTimestamp } from "./controllers/clipboard-controller";
 import {
   isGlassIntensityValue,
   isGlassStyleValue,
@@ -40,6 +38,7 @@ import {
   readStoredGlassStyleValue
 } from "./controllers/settings-controller";
 import { registerIslandApiListeners, registerRendererEvents } from "./event-binder";
+import { createIslandUpdateHandlers } from "./update-handlers";
 import { renderLyricsListView, prewarmExpandedLayerView, syncRendererView } from "./view-sync";
 import { renderIslandTemplate } from "./views/template-view";
 import {
@@ -73,8 +72,6 @@ const runtime = createRendererRuntimeState({
   systemSnapshot: { ...EMPTY_SYSTEM_SNAPSHOT },
   lastPlaybackSyncTime: window.performance.now()
 });
-
-const appState = createAppStateRuntime(runtime);
 
 function isGlassStyle(value: unknown): value is GlassStyle {
   return isGlassStyleValue(value);
@@ -473,10 +470,6 @@ function rejectClipboardPrompt() {
   setMode(restoreMode);
 }
 
-function normalizeClipboardSnapshot(snapshot: ClipboardSnapshot | undefined): ClipboardSnapshot {
-  return normalizeClipboardSnapshotFromController(snapshot);
-}
-
 function formatClipboardTime(timestamp: number) {
   return formatClipboardTimestamp(timestamp);
 }
@@ -807,99 +800,40 @@ function queueSync() {
   });
 }
 
-function createViewSyncContext() {
-  return {
+function createCurrentViewSyncContext() {
+  return createViewSyncContext({
     app,
-    get track() { return runtime.track; },
-    set track(value: TrackState) { runtime.track = value; },
-    get progressSeconds() { return runtime.progressSeconds; },
-    set progressSeconds(value: number) { runtime.progressSeconds = value; },
-    get lyrics() { return runtime.lyrics; },
-    set lyrics(value: LyricLine[]) { runtime.lyrics = value; },
-    get systemMediaActive() { return runtime.systemMediaActive; },
-    set systemMediaActive(value: boolean) { runtime.systemMediaActive = value; },
-    get lastLyricsDataKey() { return runtime.lastLyricsDataKey; },
-    set lastLyricsDataKey(value: string) { runtime.lastLyricsDataKey = value; },
-    get lyricsCenterFrame() { return runtime.lyricsCenterFrame; },
-    set lyricsCenterFrame(value: number) { runtime.lyricsCenterFrame = value; },
-    get mode() { return runtime.mode; },
-    set mode(value: IslandMode) { runtime.mode = value; },
-    get glassStyle() { return runtime.glassStyle; },
-    set glassStyle(value: GlassStyle) { runtime.glassStyle = value; },
-    get glassIntensity() { return runtime.glassIntensity; },
-    set glassIntensity(value: GlassIntensity) { runtime.glassIntensity = value; },
-    get playing() { return runtime.playing; },
-    set playing(value: boolean) { runtime.playing = value; },
-    get favorited() { return runtime.favorited; },
-    set favorited(value: boolean) { runtime.favorited = value; },
-    get draggingProgress() { return runtime.draggingProgress; },
-    set draggingProgress(value: boolean) { runtime.draggingProgress = value; },
-    get mediaEntering() { return runtime.mediaEntering; },
-    set mediaEntering(value: boolean) { runtime.mediaEntering = value; },
-    get mediaExiting() { return runtime.mediaExiting; },
-    set mediaExiting(value: boolean) { runtime.mediaExiting = value; },
-    get capsuleAppearing() { return runtime.capsuleAppearing; },
-    set capsuleAppearing(value: boolean) { runtime.capsuleAppearing = value; },
-    get capsuleDisappearing() { return runtime.capsuleDisappearing; },
-    set capsuleDisappearing(value: boolean) { runtime.capsuleDisappearing = value; },
-    get privacyState() { return runtime.privacyState; },
-    set privacyState(value: PrivacySnapshot) { runtime.privacyState = value; },
-    get priorityTransition() { return runtime.priorityTransition; },
-    set priorityTransition(value: string) { runtime.priorityTransition = value; },
-    get priorityTransitionStage() { return runtime.priorityTransitionStage; },
-    set priorityTransitionStage(value: string) { runtime.priorityTransitionStage = value; },
-    get clipboardPromptVisible() { return runtime.clipboardPromptVisible; },
-    set clipboardPromptVisible(value: boolean) { runtime.clipboardPromptVisible = value; },
-    get settingsPage() { return runtime.settingsPage; },
-    set settingsPage(value: SettingsPage) { runtime.settingsPage = value; },
-    get layout() { return runtime.layout; },
-    set layout(value: IslandLayout) { runtime.layout = value; },
-    get systemMonitorEnabled() { return runtime.systemMonitorEnabled; },
-    set systemMonitorEnabled(value: boolean) { runtime.systemMonitorEnabled = value; },
-    get systemSnapshot() { return runtime.systemSnapshot; },
-    set systemSnapshot(value: SystemSnapshot) { runtime.systemSnapshot = value; },
-    get privacyExpanded() { return runtime.privacyExpanded; },
-    set privacyExpanded(value: boolean) { runtime.privacyExpanded = value; },
-    get clipboardSnapshot() { return runtime.clipboardSnapshot; },
-    set clipboardSnapshot(value: ClipboardSnapshot) { runtime.clipboardSnapshot = value; },
-    get clipboardAccepting() { return runtime.clipboardAccepting; },
-    set clipboardAccepting(value: boolean) { runtime.clipboardAccepting = value; },
-    get clipboardAcceptPreview() { return runtime.clipboardAcceptPreview; },
-    set clipboardAcceptPreview(value: string) { runtime.clipboardAcceptPreview = value; },
-    get clipboardListRenderKey() { return runtime.clipboardListRenderKey; },
-    set clipboardListRenderKey(value: string) { runtime.clipboardListRenderKey = value; },
-    get clipboardDeleteDialogItemId() { return runtime.clipboardDeleteDialogItemId; },
-    set clipboardDeleteDialogItemId(value: string) { runtime.clipboardDeleteDialogItemId = value; },
-    get expandedLayerPrewarmed() { return runtime.expandedLayerPrewarmed; },
-    set expandedLayerPrewarmed(value: boolean) { runtime.expandedLayerPrewarmed = value; },
-    getDisplayedLyrics,
-    getActiveLyricIndex,
-    getAvailableCardModes,
-    hasClipboardItems,
-    isIdleSystemActive,
-    formatTime,
-    progressPercent,
-    getClipboardPreviewText,
-    getPendingClipboardItem,
-    getAcceptedClipboardItem,
-    formatClipboardTime,
-    getClipboardItemById,
-    isCardMode,
-    getPrivacyLabel,
-    getPrivacyDetailText
-  };
+    runtime,
+    helpers: {
+      getDisplayedLyrics,
+      getActiveLyricIndex,
+      getAvailableCardModes,
+      hasClipboardItems,
+      isIdleSystemActive,
+      formatTime,
+      progressPercent,
+      getClipboardPreviewText,
+      getPendingClipboardItem,
+      getAcceptedClipboardItem,
+      formatClipboardTime,
+      getClipboardItemById,
+      isCardMode,
+      getPrivacyLabel,
+      getPrivacyDetailText
+    }
+  });
 }
 
 function renderLyricsList() {
-  renderLyricsListView(createViewSyncContext());
+  renderLyricsListView(createCurrentViewSyncContext());
 }
 
 function syncUi() {
-  syncRendererView(createViewSyncContext());
+  syncRendererView(createCurrentViewSyncContext());
 }
 
 function prewarmExpandedLayer() {
-  prewarmExpandedLayerView(createViewSyncContext());
+  prewarmExpandedLayerView(createCurrentViewSyncContext());
 }
 
 function isTransparentIdleMode(nextMode: IslandMode) {
@@ -1188,335 +1122,83 @@ function scheduleClipboardItemDelete(itemId: string, pointerId: number) {
   }, 650);
 }
 
-function createRendererEventContext() {
-  return {
+function createCurrentRendererEventContext() {
+  return createRendererEventContext({
     app,
     island: window.island,
-    get suppressNextClick() {
-      return runtime.suppressNextClick;
-    },
-    set suppressNextClick(value: boolean) {
-      runtime.suppressNextClick = value;
-    },
-    get mode() {
-      return appState.mode;
-    },
-    set mode(value: IslandMode) {
-      appState.mode = value;
-    },
-    get settingsPage() {
-      return appState.settingsPage;
-    },
-    set settingsPage(value: SettingsPage) {
-      appState.settingsPage = value;
-    },
-    get systemMonitorEnabled() {
-      return runtime.systemMonitorEnabled;
-    },
-    set systemMonitorEnabled(value: boolean) {
-      runtime.systemMonitorEnabled = value;
-    },
-    get privacyState() {
-      return appState.privacyState;
-    },
-    set privacyState(value: PrivacySnapshot) {
-      appState.privacyState = value;
-    },
-    get systemMediaActive() {
-      return runtime.systemMediaActive;
-    },
-    set systemMediaActive(value: boolean) {
-      runtime.systemMediaActive = value;
-    },
-    get clipboardSnapshot() {
-      return appState.clipboardSnapshot;
-    },
-    set clipboardSnapshot(value: ClipboardSnapshot) {
-      appState.clipboardSnapshot = value;
-    },
-    get clipboardAcceptedItem() {
-      return runtime.clipboardAcceptedItem;
-    },
-    set clipboardAcceptedItem(value: ClipboardItem | undefined) {
-      runtime.clipboardAcceptedItem = value;
-    },
-    get clipboardDeletePointerId() {
-      return runtime.clipboardDeletePointerId;
-    },
-    set clipboardDeletePointerId(value: number | undefined) {
-      runtime.clipboardDeletePointerId = value;
-    },
-    get settingsLongPressPointerId() {
-      return runtime.settingsLongPressPointerId;
-    },
-    set settingsLongPressPointerId(value: number | undefined) {
-      runtime.settingsLongPressPointerId = value;
-    },
-    get draggingProgress() {
-      return runtime.draggingProgress;
-    },
-    set draggingProgress(value: boolean) {
-      runtime.draggingProgress = value;
-    },
-    get pendingSeekSeconds() {
-      return runtime.pendingSeekSeconds;
-    },
-    set pendingSeekSeconds(value: number | undefined) {
-      runtime.pendingSeekSeconds = value;
-    },
-    get progressSeconds() {
-      return appState.progressSeconds;
-    },
-    set progressSeconds(value: number) {
-      appState.progressSeconds = value;
-    },
-    get track() {
-      return appState.track;
-    },
-    set track(value: TrackState) {
-      appState.track = value;
-    },
-    get playing() {
-      return runtime.playing;
-    },
-    set playing(value: boolean) {
-      runtime.playing = value;
-    },
-    get lastPlaybackSyncTime() {
-      return runtime.lastPlaybackSyncTime;
-    },
-    set lastPlaybackSyncTime(value: number) {
-      runtime.lastPlaybackSyncTime = value;
-    },
-    setSettingsPage,
-    isGlassStyle,
-    setGlassStyle,
-    isGlassIntensity,
-    setGlassIntensity,
-    isLayout,
-    setLayout,
-    setSystemMonitorEnabled,
-    closeSettings,
-    closeSystemCard,
-    togglePrivacyDetail,
-    openClipboardCard,
-    acceptClipboardPrompt,
-    rejectClipboardPrompt,
-    canUseClipboardCard,
-    getPendingClipboardItem,
-    clearAcceptedClipboardSurface,
+    runtime,
+    actions: {
+      setSettingsPage,
+      isGlassStyle,
+      setGlassStyle,
+      isGlassIntensity,
+      setGlassIntensity,
+      isLayout,
+      setLayout,
+      setSystemMonitorEnabled,
+      closeSettings,
+      closeSystemCard,
+      togglePrivacyDetail,
+      openClipboardCard,
+      acceptClipboardPrompt,
+      rejectClipboardPrompt,
+      canUseClipboardCard,
+      getPendingClipboardItem,
+      clearAcceptedClipboardSurface,
+      setMode,
+      getClipboardFallbackMode,
+      closeClipboardDeleteDialog,
+      confirmClipboardDelete,
+      getAcceptedClipboardItem,
+      copyClipboardText,
+      hasClipboardItems,
+      isIdleSystemActive,
+      openSystemCard,
+      togglePlay,
+      skipTrack,
+      toggleFavorite,
+      isCardMode,
+      getAvailableCardModes,
+      switchCardPage,
+      collapsePrivacyDetail,
+      scheduleSettingsLongPress,
+      scheduleClipboardItemDelete,
+      getProgressSecondsFromPointer,
+      setRendererInteracting,
+      setProgressPreview,
+      queueSync,
+      clearClipboardDeleteTimer,
+      clearSettingsLongPress,
+      commitProgress,
+      setProgress
+    }
+  });
+}
+
+registerRendererEvents(createCurrentRendererEventContext());
+
+const islandUpdateHandlers = createIslandUpdateHandlers({
+  runtime,
+  actions: {
     setMode,
-    getClipboardFallbackMode,
-    closeClipboardDeleteDialog,
-    confirmClipboardDelete,
-    getAcceptedClipboardItem,
-    copyClipboardText,
-    hasClipboardItems,
-    isIdleSystemActive,
-    openSystemCard,
-    togglePlay,
-    skipTrack,
-    toggleFavorite,
-    isCardMode,
-    getAvailableCardModes,
-    switchCardPage,
-    collapsePrivacyDetail,
-    scheduleSettingsLongPress,
-    scheduleClipboardItemDelete,
-    getProgressSecondsFromPointer,
-    setRendererInteracting,
-    setProgressPreview,
+    hasClipboardCard,
+    cancelMediaEnterTransition,
+    startMediaExitTransition,
+    cancelMediaExitTransition,
+    clearInactiveMediaState,
+    startMediaEnterTransition,
+    clampProgressSeconds,
     queueSync,
-    clearClipboardDeleteTimer,
-    clearSettingsLongPress,
-    commitProgress,
+    startPriorityTransition,
+    clearPriorityTransition,
+    hasClipboardItems,
+    getPendingClipboardItem,
+    getClipboardFallbackMode,
+    canShowClipboardPrompt,
+    showClipboardPrompt,
     setProgress
-  };
-}
-
-registerRendererEvents(createRendererEventContext());
-
-function handleModeRequest(requestedMode: IslandMode) {
-  setMode(requestedMode, false);
-
-}
-
-function handleMediaUpdate(snapshot: MediaSnapshot) {
-  if (!snapshot.active) {
-    const hadVisibleMedia = runtime.systemMediaActive || runtime.mediaExiting;
-
-    runtime.systemMediaActive = false;
-    runtime.mediaControllable = false;
-    runtime.playing = false;
-    cancelMediaEnterTransition();
-
-    if (runtime.privacyState.active && runtime.mode === "expanded") {
-      setMode("privacy");
-    } else if (!runtime.privacyState.active && (runtime.mode === "hover" || runtime.mode === "expanded")) {
-      setMode(runtime.mode === "expanded" && hasClipboardCard() ? "clipboard" : "idle");
-    }
-
-    if (hadVisibleMedia && !runtime.privacyState.active) {
-      startMediaExitTransition();
-      runtime.lastPlaybackSyncTime = window.performance.now();
-    } else {
-      cancelMediaExitTransition();
-      clearInactiveMediaState();
-    }
-
-    queueSync();
-    return;
   }
-
-  const shouldEnterMedia = !runtime.privacyState.active && (!runtime.systemMediaActive || runtime.mediaExiting);
-  cancelMediaExitTransition();
-  runtime.systemMediaActive = true;
-  runtime.mediaControllable = snapshot.controllable !== false;
-  runtime.track = {
-    title: snapshot.title || "Unknown Title",
-    artist: snapshot.artist || snapshot.sourceApp || "Unknown Artist",
-    cover: snapshot.cover,
-    durationSeconds: Math.max(1, snapshot.durationSeconds || runtime.track.durationSeconds)
-  };
-  runtime.playing = snapshot.playing;
-  if (typeof snapshot.favorited === "boolean") {
-    runtime.favorited = snapshot.favorited;
-  }
-  runtime.lyrics = Array.isArray(snapshot.lyrics) ? snapshot.lyrics : [];
-
-  if (!runtime.draggingProgress) {
-    runtime.progressSeconds = clampProgressSeconds(snapshot.positionSeconds || 0);
-  }
-
-  runtime.lastPlaybackSyncTime = window.performance.now();
-  if (shouldEnterMedia) {
-    startMediaEnterTransition();
-  }
-  queueSync();
-
-}
-
-function handlePrivacyUpdate(snapshot: PrivacySnapshot) {
-  const previousPrivacyActive = runtime.wasPrivacyActive;
-  const previousMode = runtime.mode;
-  const nextPrivacyState: PrivacySnapshot = {
-    available: Boolean(snapshot?.available),
-    active: Boolean(snapshot?.active),
-    kind: snapshot?.kind || "none",
-    activeKinds: Array.isArray(snapshot?.activeKinds) ? snapshot.activeKinds : [],
-    apps: Array.isArray(snapshot?.apps) ? snapshot.apps : [],
-    updatedAt: Number(snapshot?.updatedAt || 0)
-  };
-  const shouldHandOffFromMedia =
-    !previousPrivacyActive &&
-    nextPrivacyState.active &&
-    runtime.systemMediaActive &&
-    (previousMode === "idle" || previousMode === "peek" || previousMode === "hover");
-  const shouldHandBackToMedia =
-    previousPrivacyActive &&
-    !nextPrivacyState.active &&
-    runtime.systemMediaActive &&
-    (runtime.mode === "privacy" || runtime.mode === "privacy-expanded");
-
-  if (shouldHandBackToMedia) {
-    runtime.pendingPrivacySnapshot = nextPrivacyState;
-    runtime.privacyExpanded = false;
-    const restoreMode = runtime.privacyReturnMode === "privacy" ? "idle" : runtime.privacyReturnMode;
-    startPriorityTransition(PRIORITY_TRANSITION_PRIVACY_TO_MEDIA, PRIVACY_PRIORITY_TRANSITION_MS, () => {
-      if (runtime.pendingPrivacySnapshot) {
-        runtime.privacyState = runtime.pendingPrivacySnapshot;
-        runtime.pendingPrivacySnapshot = undefined;
-      }
-
-      runtime.wasPrivacyActive = runtime.privacyState.active;
-      runtime.privacyReturnMode = "idle";
-      setMode(restoreMode || "idle");
-    });
-    setMode("privacy");
-    queueSync();
-    return;
-  }
-
-  runtime.pendingPrivacySnapshot = undefined;
-  runtime.privacyState = nextPrivacyState;
-  runtime.wasPrivacyActive = runtime.privacyState.active;
-
-  if (runtime.privacyState.active) {
-    const userSelectedForeground =
-      runtime.mode === "clipboard" ||
-      runtime.mode === "clipboard-prompt" ||
-      (previousPrivacyActive && runtime.mode === "expanded");
-
-    if (!previousPrivacyActive && runtime.mode !== "privacy" && runtime.mode !== "privacy-expanded" && runtime.mode !== "peek") {
-      runtime.privacyReturnMode = runtime.mode;
-    }
-
-    if (shouldHandOffFromMedia) {
-      startPriorityTransition(PRIORITY_TRANSITION_MEDIA_TO_PRIVACY);
-    } else if (!previousPrivacyActive) {
-      clearPriorityTransition();
-    }
-
-    if (!userSelectedForeground) {
-      setMode(runtime.privacyExpanded ? "privacy-expanded" : "privacy");
-    }
-  } else {
-    runtime.privacyExpanded = false;
-    clearPriorityTransition();
-    if (runtime.mode === "privacy" || runtime.mode === "privacy-expanded" || runtime.mode === "peek") {
-      const restoreMode = runtime.privacyReturnMode === "privacy" ? "idle" : runtime.privacyReturnMode;
-      runtime.privacyReturnMode = "idle";
-      setMode(restoreMode);
-    }
-  }
-
-  queueSync();
-
-}
-
-function handleClipboardUpdate(snapshot: ClipboardSnapshot) {
-  const previousPendingId = runtime.clipboardSnapshot.pending?.id || "";
-  const nextClipboardSnapshot = normalizeClipboardSnapshot(snapshot);
-  const nextPendingId = nextClipboardSnapshot.pending?.id || "";
-
-  runtime.clipboardSnapshot = nextClipboardSnapshot;
-
-  if (runtime.mode === "clipboard" && !hasClipboardItems() && !getPendingClipboardItem() && !runtime.clipboardAccepting && !runtime.clipboardAcceptedItem) {
-    setMode(getClipboardFallbackMode());
-    return;
-  }
-
-  if (runtime.mode === "clipboard") {
-    queueSync();
-    return;
-  }
-
-  if (nextPendingId && nextPendingId !== previousPendingId && canShowClipboardPrompt()) {
-    showClipboardPrompt();
-  } else {
-    queueSync();
-  }
-
-}
-
-function handleSystemUpdate(snapshot: SystemSnapshot) {
-  runtime.systemSnapshot = normalizeSystemSnapshot(snapshot);
-  queueSync();
-
-}
-
-function handlePlaybackTick() {
-  const now = window.performance.now();
-
-  if (runtime.systemMediaActive && runtime.playing && !runtime.draggingProgress) {
-    const elapsedSeconds = Math.max(0, Math.min((now - runtime.lastPlaybackSyncTime) / 1000, 1));
-    setProgress(runtime.progressSeconds + elapsedSeconds);
-  }
-
-  runtime.lastPlaybackSyncTime = now;
-
-}
-
+});
 renderTemplate();
 applyGlassIntensityToFilter();
 syncUi();
@@ -1525,11 +1207,11 @@ prewarmExpandedLayer();
 registerIslandApiListeners({
   app,
   island: window.island,
-  onModeRequest: handleModeRequest,
-  onMediaUpdate: handleMediaUpdate,
-  onPrivacyUpdate: handlePrivacyUpdate,
-  onClipboardUpdate: handleClipboardUpdate,
-  onSystemUpdate: handleSystemUpdate,
+  onModeRequest: islandUpdateHandlers.handleModeRequest,
+  onMediaUpdate: islandUpdateHandlers.handleMediaUpdate,
+  onPrivacyUpdate: islandUpdateHandlers.handlePrivacyUpdate,
+  onClipboardUpdate: islandUpdateHandlers.handleClipboardUpdate,
+  onSystemUpdate: islandUpdateHandlers.handleSystemUpdate,
   onLayoutChanged: applyUiSettings,
-  onPlaybackTick: handlePlaybackTick
+  onPlaybackTick: islandUpdateHandlers.handlePlaybackTick
 });
