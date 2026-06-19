@@ -1,206 +1,25 @@
 const http = require("node:http");
 const fs = require("node:fs");
-const path = require("node:path");
-
-const BRIDGE_HOST = "127.0.0.1";
-const BRIDGE_PORT = 32147;
-const BRIDGE_PATH = "/dynamic-island-bridge";
-const FILE_BRIDGE_DIR = "C:\\betterncm\\dynamic-island-bridge";
-const FILE_SNAPSHOT_PATH = path.join(FILE_BRIDGE_DIR, "snapshot.json");
-const FILE_COMMAND_PATH = path.join(FILE_BRIDGE_DIR, "command.json");
-const FILE_RESULT_PATH = path.join(FILE_BRIDGE_DIR, "result.json");
-const COMMAND_TIMEOUT_MS = 2200;
-const SNAPSHOT_MAX_AGE_MS = 3500;
-const FILE_RESULT_POLL_INTERVAL_MS = 120;
-const MAX_BODY_BYTES = 512 * 1024;
-const MAX_LYRIC_LINES = 120;
-
-function setCorsHeaders(response) {
-  response.setHeader("Access-Control-Allow-Origin", "*");
-  response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  response.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  response.setHeader("Access-Control-Max-Age", "86400");
-}
-
-function sendJson(response, statusCode, payload) {
-  setCorsHeaders(response);
-  response.writeHead(statusCode, { "Content-Type": "application/json; charset=utf-8" });
-  response.end(JSON.stringify(payload));
-}
-
-function readJsonBody(request) {
-  return new Promise((resolve, reject) => {
-    let body = "";
-
-    request.setEncoding("utf8");
-    request.on("data", (chunk) => {
-      body += chunk;
-
-      if (body.length > MAX_BODY_BYTES) {
-        reject(new Error("Request body is too large."));
-        request.destroy();
-      }
-    });
-    request.on("end", () => {
-      if (!body.trim()) {
-        resolve({});
-        return;
-      }
-
-      try {
-        resolve(JSON.parse(body));
-      } catch {
-        reject(new Error("Request body is not valid JSON."));
-      }
-    });
-    request.on("error", reject);
-  });
-}
-
-function sanitizeText(value, maxLength = 500) {
-  if (typeof value !== "string") {
-    return "";
-  }
-
-  return value.trim().slice(0, maxLength);
-}
-
-function sanitizeCoverUrl(value) {
-  const text = sanitizeText(value, 4096);
-  if (!text) {
-    return "";
-  }
-
-  try {
-    const url = new URL(text);
-    return ["http:", "https:", "data:"].includes(url.protocol) ? url.href : "";
-  } catch {
-    return "";
-  }
-}
-
-function normalizeSeconds(value) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.max(0, Math.round(number)) : 0;
-}
-
-function normalizeTrackId(value) {
-  const text = String(value ?? "").trim();
-  return /^\d+$/.test(text) && text !== "0" ? text : "";
-}
-
-function normalizeFavoriteState(payload = {}) {
-  const candidates = [
-    payload.favorited,
-    payload.favorite,
-    payload.liked,
-    payload.isLiked,
-    payload.isFavorite,
-    payload.starred
-  ];
-
-  for (const candidate of candidates) {
-    if (typeof candidate === "boolean") {
-      return candidate;
-    }
-  }
-
-  return undefined;
-}
-
-function normalizeLyricLines(lines) {
-  if (!Array.isArray(lines)) {
-    return [];
-  }
-
-  return lines
-    .map((line) => ({
-      timeMs: Math.max(0, Math.round(Number(line?.timeMs ?? line?.time ?? 0))),
-      text: sanitizeText(line?.text || line?.originalLyric || "", 300),
-      translation: sanitizeText(line?.translation || line?.translatedLyric || "", 300)
-    }))
-    .filter((line) => line.text)
-    .sort((a, b) => a.timeMs - b.timeMs)
-    .slice(0, MAX_LYRIC_LINES);
-}
-
-function ensureFileBridgeDir() {
-  fs.mkdirSync(FILE_BRIDGE_DIR, { recursive: true });
-}
-
-function readJsonFile(filePath) {
-  try {
-    return JSON.parse(fs.readFileSync(filePath, "utf8"));
-  } catch {
-    return undefined;
-  }
-}
-
-function writeJsonFile(filePath, payload) {
-  ensureFileBridgeDir();
-  const tempPath = `${filePath}.${process.pid}.tmp`;
-  fs.writeFileSync(tempPath, JSON.stringify(payload), "utf8");
-  fs.renameSync(tempPath, filePath);
-}
-
-function createPublicCommand(command) {
-  if (!command) {
-    return null;
-  }
-
-  return {
-    id: command.id,
-    type: command.type,
-    positionMs: command.positionMs,
-    positionSeconds: command.positionSeconds,
-    createdAt: command.createdAt,
-    timeoutMs: COMMAND_TIMEOUT_MS,
-    source: command.source,
-    sourceApp: command.sourceApp,
-    title: command.title,
-    artist: command.artist
-  };
-}
-
-function normalizeBridgeSnapshot(payload = {}) {
-  const ncmId = normalizeTrackId(payload.ncmId);
-  const title = sanitizeText(payload.title || payload.songName || "Unknown Title");
-  const artist = sanitizeText(payload.artist || payload.authorName || "NetEase Cloud Music");
-  const durationSeconds = normalizeSeconds(payload.durationSeconds || Number(payload.durationMs) / 1000);
-  const positionSeconds = normalizeSeconds(payload.positionSeconds || Number(payload.positionMs) / 1000);
-  const active = payload.active !== false && Boolean(title || artist || ncmId);
-  const favorited = normalizeFavoriteState(payload);
-  const lyrics = normalizeLyricLines(payload.lyrics);
-
-  const snapshot = {
-    available: true,
-    active,
-    playing: active && payload.playing === true,
-    status: payload.playing === true ? "Playing" : "Paused",
-    title,
-    artist,
-    albumTitle: sanitizeText(payload.albumTitle || payload.albumName || ""),
-    genres: ncmId ? [`NCM-${ncmId}`] : [],
-    ncmId,
-    cover: sanitizeCoverUrl(payload.cover || payload.coverUrl),
-    source: "inflink-bridge",
-    sourceApp: "cloudmusic.exe",
-    controllable: true,
-    durationSeconds: durationSeconds > 0 ? durationSeconds : 1,
-    positionSeconds: durationSeconds > 0 ? Math.min(positionSeconds, durationSeconds) : positionSeconds,
-    updatedAt: Date.now(),
-    bridgeStatus: sanitizeText(payload.bridgeStatus || ""),
-    bridgeVersion: sanitizeText(payload.bridgeVersion || ""),
-    lyrics,
-    lyricsSource: sanitizeText(payload.lyricsSource || "")
-  };
-
-  if (favorited !== undefined) {
-    snapshot.favorited = favorited;
-  }
-
-  return snapshot;
-}
+const {
+  BRIDGE_HOST,
+  BRIDGE_PATH,
+  BRIDGE_PORT,
+  COMMAND_TIMEOUT_MS,
+  FILE_BRIDGE_DIR,
+  FILE_COMMAND_PATH,
+  FILE_RESULT_PATH,
+  FILE_RESULT_POLL_INTERVAL_MS,
+  FILE_SNAPSHOT_PATH,
+  SNAPSHOT_MAX_AGE_MS
+} = require("./inflink/bridge-contract");
+const { ensureFileBridgeDir, readJsonFile, writeJsonFile } = require("./inflink/file-bridge");
+const { readJsonBody, sendJson, setCorsHeaders } = require("./inflink/http-utils");
+const {
+  createPublicCommand,
+  normalizeBridgeSnapshot,
+  normalizeFavoriteState,
+  normalizeSeconds
+} = require("./inflink/bridge-normalizer");
 
 function createInflinkBridge(options = {}) {
   const logStartup = typeof options.logStartup === "function" ? options.logStartup : () => {};
