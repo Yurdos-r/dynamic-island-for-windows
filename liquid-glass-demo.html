@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>液态玻璃方案对比 · Dynamic Island</title>
+<style>
+  :root {
+    color-scheme: light;
+    --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    font-family: "Segoe UI", "Microsoft YaHei UI", system-ui, -apple-system, sans-serif;
+    color: #f8fafc;
+    overflow: hidden;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  /* ---- 可切换壁纸 ---- */
+  .wallpaper {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background-size: cover;
+    background-position: center;
+    transition: opacity 400ms ease;
+  }
+  .wp-1 {
+    background:
+      radial-gradient(circle at 20% 30%, #ff6fa5 0%, transparent 45%),
+      radial-gradient(circle at 80% 20%, #4ea2ff 0%, transparent 50%),
+      radial-gradient(circle at 60% 80%, #25d6a0 0%, transparent 45%),
+      linear-gradient(135deg, #7c3aed, #2563eb);
+  }
+  .wp-2 {
+    background:
+      radial-gradient(circle at 70% 40%, #fbbf24 0%, transparent 40%),
+      radial-gradient(circle at 30% 70%, #f97316 0%, transparent 45%),
+      linear-gradient(120deg, #ea580c, #be123c, #831843);
+  }
+  .wp-3 {
+    /* 高对比黑白格，最能暴露折射扭曲 */
+    background-color: #fff;
+    background-image:
+      linear-gradient(45deg, #111 25%, transparent 25%),
+      linear-gradient(-45deg, #111 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #111 75%),
+      linear-gradient(-45deg, transparent 75%, #111 75%);
+    background-size: 56px 56px;
+    background-position: 0 0, 0 28px, 28px -28px, -28px 0;
+  }
+  .wp-4 {
+    background:
+      radial-gradient(circle at 50% 50%, #1e293b 0%, #020617 80%);
+  }
+
+  /* ---- 顶部控制条 ---- */
+  .toolbar {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 18px;
+    background: rgba(2, 6, 23, 0.55);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .toolbar h1 {
+    margin: 0 12px 0 0;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+  }
+  .toolbar .group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+  }
+  .toolbar .group b {
+    font-size: 11px;
+    font-weight: 700;
+    opacity: 0.6;
+    margin-right: 2px;
+  }
+  .chip {
+    appearance: none;
+    border: 0;
+    cursor: pointer;
+    padding: 5px 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.08);
+    transition: background 160ms ease, color 160ms ease, transform 140ms var(--motion-ease);
+  }
+  .chip:hover { background: rgba(255, 255, 255, 0.18); }
+  .chip:active { transform: scale(0.95); }
+  .chip[data-active="true"] {
+    color: #020617;
+    background: #f8fafc;
+  }
+
+  /* ---- 舞台 ---- */
+  .stage {
+    position: relative;
+    z-index: 5;
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+    align-content: center;
+    justify-items: center;
+    padding: 40px 28px;
+    overflow: auto;
+  }
+  .cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    width: 100%;
+  }
+  .cell .tag {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: rgba(2, 6, 23, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .cell .note {
+    max-width: 280px;
+    font-size: 11px;
+    line-height: 1.6;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.78);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  }
+
+  /* ============================================================
+     共享胶囊骨架 —— 复刻你项目里的尺寸/内容布局
+     ============================================================ */
+  .capsule {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 300px;
+    height: 64px;
+    padding: 0 18px 0 14px;
+    border-radius: 32px;
+    overflow: hidden;
+    color: #f8fafc;
+    -webkit-app-region: no-drag;
+    transition: transform 380ms cubic-bezier(0.18, 0.9, 0.22, 1);
+  }
+  .capsule:hover { transform: translateY(-3px) scale(1.02); }
+  .capsule .art {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    border-radius: 13px;
+    background:
+      linear-gradient(135deg, rgba(20, 184, 166, 0.98), rgba(59, 130, 246, 0.92)),
+      #0f172a;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+    display: grid;
+    place-items: center;
+  }
+  .capsule .art svg { width: 20px; height: 20px; stroke: #f8fafc; }
+  .capsule .copy { display: grid; gap: 3px; min-width: 0; flex: 1; z-index: 2; }
+  .capsule .copy strong {
+    font-size: 14px; font-weight: 800; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .capsule .copy span {
+    font-size: 12px; font-weight: 700; color: rgba(226, 232, 240, 0.7);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .capsule .eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; }
+  .capsule .eq i {
+    width: 3px; border-radius: 2px; background: #7dd3fc;
+    animation: eq 1.1s ease-in-out infinite;
+  }
+  .capsule .eq i:nth-child(1) { height: 40%; animation-delay: -0.9s; }
+  .capsule .eq i:nth-child(2) { height: 100%; animation-delay: -0.4s; }
+  .capsule .eq i:nth-child(3) { height: 60%; animation-delay: -0.65s; }
+  @keyframes eq { 0%,100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+
+  /* ============================================================
+     方案 A —— 当前效果（基准）：普通 frosted blur
+     直接照搬你 styles.css 里 .island-shell 的配方
+     ============================================================ */
+  .glass-current {
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)),
+      rgba(7, 10, 18, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    box-shadow:
+      0 14px 34px rgba(0, 0, 0, 0.38),
+      0 0 0 1px rgba(56, 189, 248, 0.12),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(14px) saturate(1.28);
+    -webkit-backdrop-filter: blur(14px) saturate(1.28);
+  }
+
+  /* ============================================================
+     方案 B —— 纯 CSS 拟真液态玻璃
+     无折射，但用多层高光 + 更透的底 + 边缘镜面高光模拟
+     ============================================================ */
+  .glass-css {
+    background:
+      linear-gradient(135deg, rgba(255,255,255,0.22), rgba(255,255,255,0.04) 40%, rgba(255,255,255,0.10)),
+      rgba(15, 23, 42, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(8px) saturate(1.8) brightness(1.05);
+    -webkit-backdrop-filter: blur(8px) saturate(1.8) brightness(1.05);
+    box-shadow:
+      0 14px 40px rgba(0, 0, 0, 0.30),
+      inset 0 1px 1px rgba(255, 255, 255, 0.55),     /* 顶部镜面高光 */
+      inset 0 -1px 1px rgba(255, 255, 255, 0.12),
+      inset 1px 0 1px rgba(255, 255, 255, 0.20),
+      inset -1px 0 1px rgba(255, 255, 255, 0.20),
+      inset 0 -16px 28px -22px rgba(0, 0, 0, 0.5);
+  }
+  /* 顶部流动高光带 */
+  .glass-css::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      100deg,
+      rgba(255,255,255,0.0) 0%,
+      rgba(255,255,255,0.18) 40%,
+      rgba(255,255,255,0.32) 50%,
+      rgba(255,255,255,0.0) 62%
+    );
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  /* 边缘内圈高光，模拟玻璃凸边 */
+  .glass-css::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+      inset 0 0 12px rgba(255, 255, 255, 0.10);
+    pointer-events: none;
+  }
+
+  /* ============================================================
+     方案 C —— SVG 位移折射液态玻璃（真折射）
+     backdrop-filter 引用 SVG feDisplacementMap 扭曲背景
+     ============================================================ */
+  .glass-svg {
+    background:
+      linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.02) 45%, rgba(255,255,255,0.08)),
+      rgba(15, 23, 42, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    backdrop-filter: url(#liquid-displace) blur(2px) saturate(1.6) brightness(1.06);
+    -webkit-backdrop-filter: url(#liquid-displace) blur(2px) saturate(1.6) brightness(1.06);
+    box-shadow:
+      0 14px 40px rgba(0, 0, 0, 0.32),
+      inset 0 1px 1.5px rgba(255, 255, 255, 0.6),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+      inset 0 -16px 28px -22px rgba(0, 0, 0, 0.5);
+  }
+  .glass-svg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+      inset 0 0 16px rgba(255, 255, 255, 0.12);
+    pointer-events: none;
+  }
+  .badge-warn {
+    margin-top: 2px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fde68a;
+  }
+</style>
+</head>
+<body>
+  <div class="wallpaper wp-1" id="wallpaper"></div>
+
+  <div class="toolbar">
+    <h1>液态玻璃方案对比</h1>
+    <div class="group">
+      <b>壁纸</b>
+      <button class="chip" data-wp="wp-1" data-active="true">霓虹</button>
+      <button class="chip" data-wp="wp-2">暖橙</button>
+      <button class="chip" data-wp="wp-3">黑白格</button>
+      <button class="chip" data-wp="wp-4">纯深色</button>
+    </div>
+    <div class="group">
+      <b>折射强度</b>
+      <button class="chip" data-scale="40">弱</button>
+      <button class="chip" data-scale="80" data-active="true">中</button>
+      <button class="chip" data-scale="140">强</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="cell">
+      <div class="tag">A · 当前效果（基准）</div>
+      <div class="capsule glass-current">
+        <div class="art">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </div>
+        <div class="copy"><strong>生来倔强</strong><span>南征北战NZBZ</span></div>
+        <div class="eq"><i></i><i></i><i></i></div>
+      </div>
+      <div class="note">普通毛玻璃：blur 把背景糊成一片，盖一层深色。背景只是“模糊”，没有被“弯折”。</div>
+    </div>
+
+    <div class="cell">
+      <div class="tag">B · 纯 CSS 拟真</div>
+      <div class="capsule glass-css">
+        <div class="art">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </div>
+        <div class="copy"><strong>生来倔强</strong><span>南征北战NZBZ</span></div>
+        <div class="eq"><i></i><i></i><i></i></div>
+      </div>
+      <div class="note">更透、更薄 + 多层镜面高光（顶/边缘）。透出更多背景色，但边缘仍不会弯折背景。零额外性能开销。</div>
+    </div>
+
+    <div class="cell">
+      <div class="tag">C · SVG 位移折射</div>
+      <div class="capsule glass-svg">
+        <div class="art">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </div>
+        <div class="copy"><strong>生来倔强</strong><span>南征北战NZBZ</span></div>
+        <div class="eq"><i></i><i></i><i></i></div>
+      </div>
+      <div class="note">真折射：边缘像透镜一样弯折背景。切到“黑白格”壁纸最明显——看胶囊边缘格子被扭曲。性能开销最大。</div>
+      <div class="badge-warn" id="svg-support">检测 SVG backdrop 支持中…</div>
+    </div>
+  </div>
+
+  <!-- SVG 位移滤镜：用湍流噪声生成位移贴图，扭曲 backdrop -->
+  <svg width="0" height="0" style="position:absolute">
+    <filter id="liquid-displace" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.016" numOctaves="2" seed="7" result="noise"/>
+      <feGaussianBlur in="noise" stdDeviation="2" result="softNoise"/>
+      <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="80" id="displace-node"
+        xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </svg>
+
+  <script>
+    // 壁纸切换
+    const wallpaper = document.getElementById("wallpaper");
+    document.querySelectorAll("[data-wp]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("[data-wp]").forEach((b) => (b.dataset.active = "false"));
+        btn.dataset.active = "true";
+        wallpaper.className = "wallpaper " + btn.dataset.wp;
+      });
+    });
+
+    // 折射强度切换
+    const displaceNode = document.getElementById("displace-node");
+    document.querySelectorAll("[data-scale]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("[data-scale]").forEach((b) => (b.dataset.active = "false"));
+        btn.dataset.active = "true";
+        displaceNode.setAttribute("scale", btn.dataset.scale);
+      });
+    });
+
+    // 检测当前内核是否支持 SVG 滤镜用于 backdrop-filter
+    const supportWarn = document.getElementById("svg-support");
+    const supportsBackdropUrl =
+      CSS.supports("backdrop-filter", "url(#x)") ||
+      CSS.supports("-webkit-backdrop-filter", "url(#x)");
+    if (supportsBackdropUrl) {
+      supportWarn.textContent = "✓ 当前内核声明支持 SVG backdrop 折射";
+      supportWarn.style.color = "#86efac";
+    } else {
+      supportWarn.textContent = "⚠ 当前内核可能不支持 backdrop 折射（Electron/Chromium 版本相关）";
+      supportWarn.style.color = "#fca5a5";
+    }
+  </script>
+</body>
+</html>

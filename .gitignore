@@ -1,0 +1,23 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+
+# 运行时临时目录与缓存（.tmp 含用户数据/解包产物，体积大）
+.tmp/
+.omc/
+
+# 日志
+*.log
+
+# 运行依赖的二进制（需另行获取，见 README）
+betterncm.dll
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 编辑器
+.vscode/
+.idea/

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/BetterNCM/BetterNCM-Plugins/refs/heads/master/manifest-schema.json",
+  "manifest_version": 1,
+  "name": "Dynamic Island Bridge",
+  "slug": "DynamicIslandBridge",
+  "version": "0.4.0",
+  "author": "Dynamic Island for Windows",
+  "description": "Bridge Dynamic Island for Windows media state and controls to InfLink-rs.",
+  "betterncm_version": ">=1.0.0",
+  "ncm3-compatible": true,
+  "injects": {
+    "Main": [
+      {
+        "file": "index.js"
+      }
+    ]
+  }
+}
