@@ -1,5 +1,4 @@
 ﻿const path = require("node:path");
-const { screen } = require("electron");
 const { IPC_CHANNELS } = require("../../shared/island-contracts");
 const {
   COLLAPSE_HIT_AREA_HOLD_MS,
@@ -10,18 +9,6 @@ const {
   RAISE_ON_POINTER_INTERVAL_MS,
   STAGE_SIZE
 } = require("./window-config");
-const {
-  coerceIslandMode: normalizeIslandMode,
-  computeAvoidScale: computeLayoutAvoidScale,
-  getMainIslandLocalRect,
-  getMainStageMetrics,
-  getModeArea: getLayoutModeArea,
-  getSystemIslandLocalRect: getSystemIslandLocalRectFromLayout,
-  getSystemStageMetrics,
-  getWindowHeightForMode: getLayoutWindowHeightForMode,
-  pointInRect,
-  resolveModeForMediaState: resolveLayoutModeForMediaState
-} = require("./layout-engine");
 const { createWindowFader } = require("./fade-controller");
 const { createHitTargetManager } = require("./hit-target-manager");
 const { createMainHoverController, createSystemHoverController } = require("./hover-controller");
@@ -29,11 +16,12 @@ const { createLayoutTaskbarPolicy } = require("./layout-taskbar-policy");
 const { createPointerWindowController } = require("./pointer-window-controller");
 const { createStageBoundsController } = require("./stage-bounds-controller");
 const { createSystemWindowVisibilityManager } = require("./system-window-visibility");
-const { configureIslandBrowserWindow, createIslandBrowserWindow } = require("./window-factory");
-const { registerIslandWindowLifecycle } = require("./window-lifecycle");
 const { createFrameInteractionController } = require("./frame-interaction");
 const { createRendererReadinessController } = require("./renderer-readiness");
 const { createWindowSnapshotDispatcher } = require("./snapshot-dispatcher");
+const { createWindowCreationController } = require("./window-creation-controller");
+const { createWindowGeometryController } = require("./window-geometry-controller");
+const { createWindowModeController } = require("./window-mode-controller");
 const { createWindowRuntimeState } = require("./window-runtime-state");
 
 function createIslandWindowManager(options = {}) {
@@ -59,132 +47,58 @@ function createIslandWindowManager(options = {}) {
     initialStageWidth: STAGE_SIZE.width
   });
   const windowFader = createWindowFader();
+  const geometry = createWindowGeometryController({ state, logStartup });
+  let creationController;
+  let modeController;
 
-function coerceIslandMode(mode) {
-  return normalizeIslandMode(mode);
+function getCreationController() {
+  if (!creationController) {
+    throw new Error("window creation controller has not been initialized.");
+  }
+  return creationController;
 }
 
-function resolveModeForMediaState(mode) {
-  return resolveLayoutModeForMediaState(mode, {
-    mediaActive: state.mediaActive,
-    privacyActive: state.privacyActive
-  });
+function getModeController() {
+  if (!modeController) {
+    throw new Error("window mode controller has not been initialized.");
+  }
+  return modeController;
 }
 
 function getStagePosition(windowHeight = state.currentWindowHeight, shouldLog = true) {
-  const point = screen.getCursorScreenPoint();
-  const display = screen.getDisplayNearestPoint(point) || screen.getPrimaryDisplay();
-  const metrics = getMainStageMetrics({ display, layout: state.layout, windowHeight });
-  state.stageWidth = metrics.stageWidth;
-
-  if (shouldLog) {
-    logStartup("stage-position", {
-      cursor: point,
-      bounds: display.bounds,
-      workArea: display.workArea,
-      taskbarIconLeft: state.taskbarIconLeft,
-      stageWidthFixed: true,
-      layout: state.layout,
-      windowHeight,
-      stageWidth: state.stageWidth,
-      position: metrics.position
-    });
-  }
-
-  return metrics.position;
+  return geometry.getStagePosition(windowHeight, shouldLog);
 }
 
 function getSystemStagePosition(windowHeight = state.systemWindowHeight, shouldLog = true) {
-  const point = screen.getCursorScreenPoint();
-  const display = screen.getDisplayNearestPoint(point) || screen.getPrimaryDisplay();
-  const metrics = getSystemStageMetrics({ display, windowHeight });
-  state.systemStageWidth = metrics.systemStageWidth;
-
-  if (shouldLog) {
-    logStartup("system-stage-position", {
-      cursor: point,
-      bounds: display.bounds,
-      workArea: display.workArea,
-      windowHeight,
-      systemStageWidth: state.systemStageWidth,
-      position: metrics.position
-    });
-  }
-
-  return metrics.position;
+  return geometry.getSystemStagePosition(windowHeight, shouldLog);
 }
 
 function getIslandLocalRect(mode = state.currentMode, paddingX = 0, paddingY = paddingX) {
-  return getMainIslandLocalRect({
-    mode,
-    layout: state.layout,
-    stageWidth: state.stageWidth,
-    windowHeight: state.currentWindowHeight,
-    paddingX,
-    paddingY
-  });
+  return geometry.getIslandLocalRect(mode, paddingX, paddingY);
 }
 
 function getSystemIslandLocalRect(mode = state.systemCurrentMode, paddingX = 0, paddingY = paddingX) {
-  return getSystemIslandLocalRectFromLayout({
-    mode,
-    systemStageWidth: state.systemStageWidth,
-    systemWindowHeight: state.systemWindowHeight,
-    paddingX,
-    paddingY
-  });
+  return geometry.getSystemIslandLocalRect(mode, paddingX, paddingY);
 }
 
 function getIslandRect(mode = state.currentMode, paddingX = 0, paddingY = paddingX) {
-  if (!state.mainWindow || state.mainWindow.isDestroyed()) {
-    return { x: 0, y: 0, width: 0, height: 0 };
-  }
-
-  const bounds = state.mainWindow.getBounds();
-  const localRect = getIslandLocalRect(mode, paddingX, paddingY);
-
-  return {
-    x: Math.round(bounds.x + localRect.x),
-    y: Math.round(bounds.y + localRect.y),
-    width: localRect.width,
-    height: localRect.height
-  };
+  return geometry.getIslandRect(mode, paddingX, paddingY);
 }
 
 function getSystemIslandRect(mode = state.systemCurrentMode, paddingX = 0, paddingY = paddingX) {
-  if (!state.systemWindow || state.systemWindow.isDestroyed()) {
-    return { x: 0, y: 0, width: 0, height: 0 };
-  }
-
-  const bounds = state.systemWindow.getBounds();
-  const localRect = getSystemIslandLocalRect(mode, paddingX, paddingY);
-
-  return {
-    x: Math.round(bounds.x + localRect.x),
-    y: Math.round(bounds.y + localRect.y),
-    width: localRect.width,
-    height: localRect.height
-  };
+  return geometry.getSystemIslandRect(mode, paddingX, paddingY);
 }
 
 function isPointerInsideCurrentCard(padding = 0) {
-  if (!state.mainWindow || state.mainWindow.isDestroyed()) {
-    return false;
-  }
-
-  return pointInRect(screen.getCursorScreenPoint(), getIslandRect(state.currentMode, padding, padding));
+  return geometry.isPointerInsideCurrentCard(padding);
 }
 
 function isPointerInsideSystemCard(padding = 0) {
-  if (!state.systemWindow || state.systemWindow.isDestroyed()) {
-    return false;
-  }
-
-  return pointInRect(screen.getCursorScreenPoint(), getSystemIslandRect(state.systemCurrentMode, padding, padding));
+  return geometry.isPointerInsideSystemCard(padding);
 }
 
 function getModeArea(mode) {
-  return getLayoutModeArea(mode);
+  return geometry.getModeArea(mode);
 }
 
 function clearShapeRefreshTimer() {
@@ -196,27 +110,11 @@ function clearSystemShapeRefreshTimer() {
 }
 
 function getWindowHeightForMode(mode = state.currentMode) {
-  return getLayoutWindowHeightForMode(mode);
+  return geometry.getWindowHeightForMode(mode);
 }
 
 function getSystemWindowHeightForMode(mode = state.systemCurrentMode) {
-  return getLayoutWindowHeightForMode(mode);
-}
-
-function applyStageWindowBounds(windowHeight = state.currentWindowHeight, options = {}) {
-  mainStageBounds.applyBounds(windowHeight, options);
-}
-
-function applySystemStageWindowBounds(windowHeight = state.systemWindowHeight, options = {}) {
-  systemStageBounds.applyBounds(windowHeight, options);
-}
-
-function scheduleStageWindowForMode(previousMode, nextMode) {
-  mainStageBounds.scheduleForMode(previousMode, nextMode);
-}
-
-function scheduleSystemStageWindowForMode(previousMode, nextMode) {
-  systemStageBounds.scheduleForMode(previousMode, nextMode);
+  return geometry.getSystemWindowHeightForMode(mode);
 }
 
 function updateNativeHitShape() {
@@ -225,14 +123,6 @@ function updateNativeHitShape() {
 
 function updateSystemNativeHitShape() {
   systemHitTarget.updateNativeHitShape();
-}
-
-function armCollapseHitHold(previousMode, nextMode) {
-  mainHitTarget.armCollapseHitHold(previousMode, nextMode);
-}
-
-function armSystemCollapseHitHold(previousMode, nextMode) {
-  systemHitTarget.armCollapseHitHold(previousMode, nextMode);
 }
 
 function isPointerInsideMouseTarget(padding = 0) {
@@ -268,35 +158,11 @@ function updateSystemMousePassthrough(force = false) {
 }
 
 function resizeIsland(mode) {
-  if (!state.mainWindow || state.mainWindow.isDestroyed()) {
-    return state.currentMode;
-  }
-
-  const previousMode = state.currentMode;
-  state.currentMode = resolveModeForMediaState(mode);
-  armCollapseHitHold(previousMode, state.currentMode);
-  scheduleStageWindowForMode(previousMode, state.currentMode);
-  updateMousePassthrough(true);
-  if (previousMode !== state.currentMode) {
-    sendAvoidScale();
-  }
-  return state.currentMode;
+  return getModeController().resizeIsland(mode);
 }
 
 function resizeSystemIsland(mode) {
-  if (!state.systemWindow || state.systemWindow.isDestroyed()) {
-    return state.systemCurrentMode;
-  }
-
-  const previousMode = state.systemCurrentMode;
-  state.systemCurrentMode = coerceIslandMode(mode);
-  if (state.systemCurrentMode !== "idle" && state.systemCurrentMode !== "hover" && state.systemCurrentMode !== "expanded") {
-    state.systemCurrentMode = "idle";
-  }
-  armSystemCollapseHitHold(previousMode, state.systemCurrentMode);
-  scheduleSystemStageWindowForMode(previousMode, state.systemCurrentMode);
-  updateSystemMousePassthrough(true);
-  return state.systemCurrentMode;
+  return getModeController().resizeSystemIsland(mode);
 }
 
 function repositionStageWindow() {
@@ -319,26 +185,14 @@ function repositionAllStageWindows() {
 // 绐楀彛鍑犱綍閿欎綅锛夈€俿cheduleSystemStageWindowForMode 鐨勬敹缂╁垎鏀湪 mode 鏈彉锛坕dle鈫抜dle锛?
 // 鏃朵笉浼氱缉绐楋紝鏁呰繖閲岀洿鎺ユ妸 systemWindowHeight 閲嶇疆骞堕€氱煡 renderer 鍚屾鍥?idle銆?
 function collapseSystemWindowToIdle() {
-  state.systemCurrentMode = "idle";
-  systemHitTarget.resetHold();
-  state.systemWindowHeight = getSystemWindowHeightForMode("idle");
-  if (state.systemWindow && !state.systemWindow.isDestroyed() && state.systemRendererReady) {
-    state.systemWindow.webContents.send(IPC_CHANNELS.setMode, "idle");
-  }
+  getModeController().collapseSystemWindowToIdle();
 }
 
 // 閫€閬跨缉鏀惧洜瀛愶細褰撲换鍔℃爮鍥炬爣鍖烘妸鑳跺泭鍙敤瀹藉害鍘嬪埌姣斿綋鍓嶆ā寮忔甯稿搴﹁繕绐勬椂锛?
 // 璁╄兌鍥婃暣浣撶瓑姣旂缉灏忚浣嶃€俿tageWidth 宸插湪 getStagePosition 閲屾寜浠诲姟鏍忓乏缂樼畻濂斤紝
 // 杩欓噷鍙渶瀵规瘮"鍙敤绌洪棿"涓?鑳跺泭姝ｅ父瀹藉害"銆?
 function computeAvoidScale() {
-  const point = screen.getCursorScreenPoint();
-  const display = screen.getDisplayNearestPoint(point) || screen.getPrimaryDisplay();
-  return computeLayoutAvoidScale({
-    layout: state.layout,
-    taskbarIconLeft: state.taskbarIconLeft,
-    display,
-    currentMode: state.currentMode
-  });
+  return geometry.computeAvoidScale();
 }
 
 function sendAvoidScale() {
@@ -416,15 +270,6 @@ function hideSystemWindow() {
   systemWindowVisibility.hide();
 }
 
-function applyLayoutToWindows() {
-  layoutTaskbarPolicy.applyLayoutToWindows();
-}
-
-// 鍚戜袱涓?renderer 骞挎挱鏈€鏂?UI 璁剧疆锛岃 main.ts 鍚屾 data-layout / 鍐呭祵绯荤粺鍗℃樉闅愩€?
-function broadcastUiSettings() {
-  layoutTaskbarPolicy.broadcastUiSettings();
-}
-
 function applyLayout(next) {
   return layoutTaskbarPolicy.applyLayout(next);
 }
@@ -434,37 +279,11 @@ function applySystemMonitorEnabled(next) {
 }
 
 function requestIslandMode(mode) {
-  if (!state.mainWindow || state.mainWindow.isDestroyed() || !state.rendererReady) {
-    return;
-  }
-
-  const nextMode = resolveModeForMediaState(mode);
-  mainHoverController.clearTimers();
-  resizeIsland(nextMode);
-  setTimeout(() => {
-    if (!state.mainWindow || state.mainWindow.isDestroyed() || !state.rendererReady) {
-      return;
-    }
-
-    state.mainWindow.webContents.send(IPC_CHANNELS.setMode, nextMode);
-  }, 16);
+  getModeController().requestIslandMode(mode);
 }
 
 function requestSystemIslandMode(mode) {
-  if (!state.systemWindow || state.systemWindow.isDestroyed() || !state.systemRendererReady) {
-    return;
-  }
-
-  const nextMode = resizeSystemIsland(mode);
-  systemHoverController.clearCloseTimer();
-
-  setTimeout(() => {
-    if (!state.systemWindow || state.systemWindow.isDestroyed() || !state.systemRendererReady) {
-      return;
-    }
-
-    state.systemWindow.webContents.send(IPC_CHANNELS.setMode, nextMode);
-  }, 16);
+  getModeController().requestSystemIslandMode(mode);
 }
 
 function startHoverDetection() {
@@ -486,172 +305,15 @@ function stopSystemHoverDetection() {
 }
 
 function createWindow() {
-  state.rendererReady = false;
-  state.currentWindowHeight = getWindowHeightForMode(state.currentMode);
-  const position = getStagePosition(state.currentWindowHeight);
-  logStartup("create-window", { ...position, opaqueWindow: OPAQUE_WINDOW });
-
-  state.mainWindow = createIslandBrowserWindow({
-    width: state.stageWidth,
-    height: state.currentWindowHeight,
-    position,
-    opaqueWindow: OPAQUE_WINDOW,
-    preloadPath
-  });
-
-  configureIslandBrowserWindow(state.mainWindow);
-  updateNativeHitShape();
-  setMousePassthrough(true);
-
-  registerIslandWindowLifecycle({
-    window: state.mainWindow,
-    logStartup,
-    events: {
-      readyToShow: "ready-to-show",
-      didFinishLoad: "did-finish-load",
-      didFailLoad: "did-fail-load",
-      renderProcessGone: "render-process-gone",
-      consoleMessage: "renderer-console",
-      show: "window-show",
-      hide: "window-hide",
-      closed: "window-closed"
-    },
-    onReadyToShow: () => {
-      if (!state.mainWindow || state.mainWindow.isDestroyed()) {
-        return;
-      }
-
-      resizeIsland(state.currentMode);
-      state.mainWindow.show();
-      raiseWindowForPointer(true);
-    },
-    onDidFinishLoad: () => {
-      if (!state.mainWindow || state.mainWindow.isDestroyed() || state.mainWindow.isVisible()) {
-        return;
-      }
-
-      resizeIsland(state.currentMode);
-      state.mainWindow.show();
-      raiseWindowForPointer(true);
-    },
-    onClosed: () => {
-      state.mainWindow = undefined;
-    },
-    onBlur: () => {
-      if (
-        state.currentMode !== "expanded" &&
-        state.currentMode !== "clipboard" &&
-        state.currentMode !== "settings" &&
-        state.currentMode !== "privacy" &&
-        state.currentMode !== "privacy-expanded"
-      ) {
-        requestIslandMode("idle");
-      }
-    }
-  });
-  loadRendererEntry(state.mainWindow, "index.html", "main", { getDevServerUrl, logStartup });
+  return getCreationController().createWindow();
 }
 
 function createSystemWindow() {
-  state.systemRendererReady = false;
-  state.systemCurrentMode = "idle";
-  state.systemWindowHeight = getSystemWindowHeightForMode(state.systemCurrentMode);
-  const position = getSystemStagePosition(state.systemWindowHeight);
-  logStartup("create-system-window", { ...position, opaqueWindow: OPAQUE_WINDOW });
-
-  state.systemWindow = createIslandBrowserWindow({
-    width: state.systemStageWidth,
-    height: state.systemWindowHeight,
-    position,
-    opaqueWindow: OPAQUE_WINDOW,
-    preloadPath
-  });
-
-  configureIslandBrowserWindow(state.systemWindow);
-  updateSystemNativeHitShape();
-  setSystemMousePassthrough(true);
-
-  registerIslandWindowLifecycle({
-    window: state.systemWindow,
-    logStartup,
-    events: {
-      readyToShow: "system-ready-to-show",
-      didFinishLoad: "system-did-finish-load",
-      didFailLoad: "system-did-fail-load",
-      renderProcessGone: "system-render-process-gone",
-      consoleMessage: "system-renderer-console",
-      show: "system-window-show",
-      hide: "system-window-hide",
-      closed: "system-window-closed"
-    },
-    onReadyToShow: () => {
-      if (!state.systemWindow || state.systemWindow.isDestroyed()) {
-        return;
-      }
-
-      resizeSystemIsland(state.systemCurrentMode);
-      if (state.taskbarVisible && systemWindowShouldShow()) {
-        state.systemWindow.show();
-        raiseSystemWindowForPointer(true);
-      }
-    },
-    onDidFinishLoad: () => {
-      if (!state.systemWindow || state.systemWindow.isDestroyed() || state.systemWindow.isVisible()) {
-        return;
-      }
-
-      resizeSystemIsland(state.systemCurrentMode);
-      if (state.taskbarVisible && systemWindowShouldShow()) {
-        state.systemWindow.show();
-        raiseSystemWindowForPointer(true);
-      }
-    },
-    onClosed: () => {
-      state.systemWindow = undefined;
-    },
-    onBlur: () => {
-      if (state.systemCurrentMode !== "idle") {
-        requestSystemIslandMode("idle");
-      }
-    }
-  });
-  loadRendererEntry(state.systemWindow, "system.html", "system", { getDevServerUrl, logStartup });
+  return getCreationController().createSystemWindow();
 }
 
 function showExistingWindow() {
-  if (!state.mainWindow || state.mainWindow.isDestroyed()) {
-    createWindow();
-  }
-
-  if (!state.systemWindow || state.systemWindow.isDestroyed()) {
-    createSystemWindow();
-  }
-
-  if (state.mainWindow && !state.mainWindow.isDestroyed()) {
-    repositionStageWindow();
-    state.mainWindow.show();
-    raiseWindowForPointer(true);
-    requestIslandMode(
-      state.privacyActive && (state.currentMode === "privacy" || state.currentMode === "privacy-expanded")
-        ? state.currentMode
-        : state.privacyActive
-          ? "privacy"
-          : "peek"
-    );
-  }
-
-  if (state.systemWindow && !state.systemWindow.isDestroyed()) {
-    if (systemWindowShouldShow()) {
-      unparkSystemWindow();
-      repositionSystemStageWindow();
-      state.systemWindow.show();
-      raiseSystemWindowForPointer(true);
-    } else {
-      // park锛堢Щ鍑哄睆骞曪級鑰岄潪 hide()锛氶伩鍏嶅悗缁?show 瑙﹀彂鍛戒腑鍍垫銆?
-      state.systemWindow.show();
-      systemWindowVisibility.parkWithoutFade();
-    }
-  }
+  return getCreationController().showExistingWindow();
 }
 
 
@@ -693,8 +355,8 @@ function showExistingWindow() {
     getLocalRect: getIslandLocalRect,
     getScreenRect: getIslandRect,
     getModeArea,
-    getCursorPoint: () => screen.getCursorScreenPoint(),
-    pointInRect
+    getCursorPoint: geometry.getCursorPoint,
+    pointInRect: geometry.pointInRect
   });
 
   const systemHitTarget = createHitTargetManager({
@@ -706,8 +368,8 @@ function showExistingWindow() {
     getLocalRect: getSystemIslandLocalRect,
     getScreenRect: getSystemIslandRect,
     getModeArea,
-    getCursorPoint: () => screen.getCursorScreenPoint(),
-    pointInRect
+    getCursorPoint: geometry.getCursorPoint,
+    pointInRect: geometry.pointInRect
   });
 
   const mainPointerController = createPointerWindowController({
@@ -770,6 +432,20 @@ function showExistingWindow() {
     resizeCurrentMode: resizeSystemIsland
   });
 
+  modeController = createWindowModeController({
+    state,
+    mainHoverController,
+    systemHoverController,
+    mainHitTarget,
+    systemHitTarget,
+    mainStageBounds,
+    systemStageBounds,
+    mainPointerController,
+    systemPointerController,
+    getSystemWindowHeightForMode,
+    sendAvoidScale
+  });
+
   const layoutTaskbarPolicy = createLayoutTaskbarPolicy({
     validLayouts: VALID_LAYOUTS,
     getLayout: () => state.layout,
@@ -797,6 +473,34 @@ function showExistingWindow() {
     hideSystemWindow,
     sendAvoidScale,
     syncSystemMonitorRunning
+  });
+
+  creationController = createWindowCreationController({
+    state,
+    logStartup,
+    loadRendererEntry,
+    getDevServerUrl,
+    opaqueWindow: OPAQUE_WINDOW,
+    preloadPath,
+    getWindowHeightForMode,
+    getSystemWindowHeightForMode,
+    getStagePosition,
+    getSystemStagePosition,
+    updateNativeHitShape,
+    updateSystemNativeHitShape,
+    setMousePassthrough,
+    setSystemMousePassthrough,
+    resizeIsland,
+    resizeSystemIsland,
+    raiseWindowForPointer,
+    raiseSystemWindowForPointer,
+    requestIslandMode,
+    requestSystemIslandMode,
+    repositionStageWindow,
+    repositionSystemStageWindow,
+    systemWindowShouldShow,
+    unparkSystemWindow,
+    systemWindowVisibility
   });
 
   const snapshotDispatcher = createWindowSnapshotDispatcher({
