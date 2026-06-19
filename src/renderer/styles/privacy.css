@@ -1,0 +1,153 @@
+﻿.privacy-strip {
+  position: absolute;
+  z-index: 6;
+  left: 0;
+  top: 0;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  grid-template-rows: 1fr;
+  align-items: center;
+  column-gap: 10px;
+  width: auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0 14px 0 18px;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  opacity: 0;
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transform: translate3d(0, 2px, 0) scale(0.98);
+  transform-origin: top left;
+  transition:
+    opacity 180ms ease,
+    transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.privacy-strip:focus-visible {
+  outline: none;
+}
+
+#app[data-privacy-active="true"] .privacy-strip {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+#app[data-media-active="false"] .privacy-strip {
+  left: 10px;
+  right: 10px;
+  padding: 0 6px;
+}
+
+#app[data-media-active="true"] .privacy-strip {
+  top: 0;
+  left: 14px;
+  right: 14px;
+  height: 100%;
+  padding: 0 6px;
+}
+
+#app[data-mode="clipboard-prompt"] .privacy-strip,
+#app[data-mode="expanded"] .privacy-strip,
+#app[data-mode="clipboard"] .privacy-strip,
+#app[data-mode="settings"] .privacy-strip,
+#app[data-mode="system"] .privacy-strip {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.privacy-indicator {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.privacy-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  align-self: center;
+  justify-items: end;
+  text-align: right;
+}
+
+.privacy-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.04),
+    0 0 14px currentColor;
+}
+
+.privacy-dot-microphone {
+  color: #facc15;
+  background: #facc15;
+}
+
+.privacy-dot-camera {
+  color: #ef4444;
+  background: #ef4444;
+}
+
+.privacy-location {
+  width: 12px;
+  height: 12px;
+  color: #38bdf8;
+  background: currentColor;
+  /* Classic location arrow: solid pointer aimed up-right with a V notch tail,
+     matching the system tray / iOS location glyph. */
+  clip-path: polygon(100% 0%, 0% 45%, 43% 57%, 55% 100%);
+  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.7));
+}
+
+.privacy-location::before,
+.privacy-location::after {
+  content: none;
+}
+
+.privacy-label {
+  min-width: 0;
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.privacy-detail {
+  display: none;
+  min-width: 0;
+  max-width: 250px;
+  overflow: hidden;
+  color: rgba(186, 230, 253, 0.88);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate3d(8px, 0, 0);
+  transition:
+    opacity 180ms ease,
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clipboard-prompt-layer {
+  z-index: 7;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 42px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 9px 6px 14px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+

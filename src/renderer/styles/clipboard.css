@@ -1,0 +1,630 @@
+﻿.clipboard-prompt-icon,
+.clipboard-row-icon {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  color: #0f172a;
+  background: linear-gradient(135deg, #f8fafc, #bae6fd);
+  box-shadow:
+    0 0 18px rgba(125, 211, 252, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.56);
+}
+
+.clipboard-prompt-icon::before,
+.clipboard-row-icon::before {
+  width: 11px;
+  height: 13px;
+  border: 1.6px solid currentColor;
+  border-radius: 3px;
+  content: "";
+}
+
+.clipboard-prompt-icon::after,
+.clipboard-row-icon::after {
+  position: absolute;
+  top: 4px;
+  width: 7px;
+  height: 3px;
+  border-radius: 999px;
+  background: currentColor;
+  content: "";
+}
+
+.clipboard-prompt-copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+  text-align: left;
+}
+
+.clipboard-prompt-text,
+.clipboard-prompt-question {
+  min-width: 0;
+  overflow: hidden;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clipboard-prompt-text {
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 780;
+  line-height: 1.1;
+}
+
+.clipboard-prompt-question {
+  color: rgba(186, 230, 253, 0.78);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.clipboard-prompt-action {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 28px;
+  border-radius: 999px;
+  color: #020617;
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 850;
+  box-shadow:
+    0 7px 18px rgba(15, 23, 42, 0.24),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.62);
+}
+
+.clipboard-layer {
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  -webkit-app-region: no-drag;
+}
+
+.clipboard-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 34px;
+}
+
+.clipboard-header-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.clipboard-title {
+  color: #f8fafc;
+  font-size: 17px;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.clipboard-clear-button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 48px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  color: rgba(248, 250, 252, 0.9);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clipboard-clear-button:hover {
+  color: #fff;
+  background: rgba(248, 113, 113, 0.18);
+}
+
+.clipboard-clear-button:active {
+  transform: scale(0.96);
+}
+
+.clipboard-subtitle {
+  color: rgba(186, 230, 253, 0.78);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.clipboard-confirm-panel {
+  position: relative;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  grid-template-columns: minmax(0, 1fr);
+  height: 226px;
+  min-height: 226px;
+  gap: 12px;
+  padding: 18px;
+  overflow: hidden;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(125, 211, 252, 0.16), transparent 60%),
+    rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  transform: translate3d(0, 0, 0) scale(1);
+  transform-origin: center;
+  will-change: height, min-height, padding, border-radius, transform, opacity;
+  transition:
+    height 540ms cubic-bezier(0.16, 1, 0.3, 1),
+    min-height 540ms cubic-bezier(0.16, 1, 0.3, 1),
+    padding 540ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-radius 520ms cubic-bezier(0.16, 1, 0.3, 1),
+    background 360ms ease,
+    box-shadow 360ms ease,
+    opacity 220ms ease,
+    transform 540ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clipboard-confirm-icon {
+  display: none;
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  opacity: 0;
+  transform: translate3d(-6px, 0, 0) scale(0.72);
+  transition:
+    opacity 240ms ease,
+    transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clipboard-confirm-panel[hidden] {
+  display: none;
+}
+
+.clipboard-confirm-panel[data-accepting="true"] {
+  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-rows: 14px 10px;
+  align-content: center;
+  align-items: center;
+  justify-items: stretch;
+  height: 44px;
+  min-height: 44px;
+  column-gap: 10px;
+  row-gap: 3px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  cursor: pointer;
+  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.075);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.055);
+  transform: translate3d(0, -2px, 0) scale(0.996);
+}
+
+.clipboard-confirm-panel[data-accepting="true"] .clipboard-confirm-icon {
+  display: inline-grid;
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.clipboard-confirm-panel[data-contracting="true"] {
+  cursor: default;
+  pointer-events: none;
+}
+
+.clipboard-confirm-panel[data-ready="true"]:hover {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.09),
+    0 10px 22px rgba(0, 0, 0, 0.16);
+}
+
+.clipboard-confirm-panel[data-ready="true"]:active {
+  transform: translate3d(0, -2px, 0) scale(0.982);
+}
+
+.clipboard-confirm-panel[data-accepting="true"] .clipboard-confirm-no,
+.clipboard-confirm-panel[data-accepting="true"] .clipboard-confirm-yes {
+  pointer-events: none;
+}
+
+.clipboard-confirm-kicker {
+  color: rgba(186, 230, 253, 0.78);
+  font-size: 11px;
+  font-weight: 780;
+  letter-spacing: 0;
+  transition:
+    opacity 180ms ease,
+    transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clipboard-confirm-panel[data-accepting="true"] .clipboard-confirm-kicker {
+  position: absolute;
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  opacity: 0;
+  transform: translate3d(0, -8px, 0) scale(0.96);
+}
+
+.clipboard-confirm-preview {
+  display: -webkit-box;
+  grid-column: 1;
+  max-width: 100%;
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: 18px;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1.25;
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  transition:
+    color 240ms ease,
+    font-size 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    font-weight 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clipboard-confirm-panel[data-accepting="true"] .clipboard-confirm-preview {
+  display: block;
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  min-width: 0;
+  max-width: 100%;
+  color: rgba(248, 250, 252, 0.96);
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 1.15;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  -webkit-line-clamp: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+.clipboard-confirm-time {
+  display: none;
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(148, 163, 184, 0.9);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate3d(0, 4px, 0);
+  transition:
+    opacity 260ms ease,
+    transform 360ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clipboard-confirm-panel[data-accepting="true"] .clipboard-confirm-time {
+  display: block;
+  align-self: start;
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+.clipboard-confirm-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 4px;
+  transition:
+    opacity 160ms ease,
+    transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clipboard-confirm-panel[data-accepting="true"] .clipboard-confirm-actions {
+  position: absolute;
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  opacity: 0;
+  transform: translate3d(0, 8px, 0) scale(0.96);
+}
+
+.clipboard-confirm-no,
+.clipboard-confirm-yes {
+  display: inline-grid;
+  place-items: center;
+  min-width: 72px;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clipboard-confirm-no {
+  color: rgba(248, 250, 252, 0.88);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.clipboard-confirm-yes {
+  color: #020617;
+  background: #f8fafc;
+}
+
+.clipboard-confirm-no:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.clipboard-confirm-yes:hover {
+  background: #bae6fd;
+}
+
+.clipboard-confirm-no:active,
+.clipboard-confirm-yes:active {
+  transform: scale(0.96);
+}
+
+.clipboard-list {
+  display: grid;
+  align-content: start;
+  min-height: 0;
+  flex: 1;
+  gap: 8px;
+  overflow: auto;
+  padding-right: 1px;
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%);
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  transition:
+    opacity 260ms ease,
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clipboard-list[data-accepting="true"] {
+  opacity: 0;
+  transform: translate3d(0, 8px, 0) scale(0.992);
+  animation: clipboard-list-after-accept 360ms cubic-bezier(0.16, 1, 0.3, 1) 300ms both;
+}
+
+.clipboard-list[data-contracting-below="true"] {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  animation: clipboard-list-follow-contract 540ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.clipboard-list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+@keyframes clipboard-list-after-accept {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.992);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes clipboard-list-follow-contract {
+  0% {
+    opacity: 0.78;
+    transform: translate3d(0, 6px, 0) scale(0.998);
+  }
+
+  42% {
+    opacity: 0.96;
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.clipboard-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.075);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.055);
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    box-shadow 160ms ease,
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clipboard-row:hover {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.09),
+    0 10px 22px rgba(0, 0, 0, 0.16);
+}
+
+.clipboard-row:active {
+  transform: scale(0.985);
+  background: rgba(248, 113, 113, 0.14);
+}
+
+.clipboard-row-icon {
+  width: 28px;
+  height: 28px;
+  color: #0f172a;
+}
+
+.clipboard-row-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  text-align: left;
+}
+
+.clipboard-row-copy strong,
+.clipboard-row-copy small {
+  min-width: 0;
+  overflow: hidden;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clipboard-row-copy strong {
+  color: rgba(248, 250, 252, 0.96);
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 1.15;
+}
+
+.clipboard-row-copy small {
+  color: rgba(148, 163, 184, 0.9);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.clipboard-empty {
+  display: grid;
+  place-items: center;
+  min-height: 210px;
+  color: rgba(148, 163, 184, 0.9);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.clipboard-delete-dialog {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(2, 6, 23, 0.62);
+  backdrop-filter: blur(10px);
+}
+
+.clipboard-delete-dialog[hidden] {
+  display: none;
+}
+
+.clipboard-delete-panel {
+  display: grid;
+  width: min(100%, 310px);
+  gap: 10px;
+  padding: 16px;
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.07)),
+    rgba(15, 23, 42, 0.94);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.38),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.11);
+}
+
+.clipboard-delete-title {
+  color: #f8fafc;
+  font-size: 15px;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1.15;
+}
+
+.clipboard-delete-preview {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(203, 213, 225, 0.9);
+  font-size: 12px;
+  font-weight: 680;
+  letter-spacing: 0;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clipboard-delete-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.clipboard-delete-cancel,
+.clipboard-delete-confirm {
+  display: inline-grid;
+  place-items: center;
+  min-width: 58px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 820;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clipboard-delete-cancel {
+  color: rgba(248, 250, 252, 0.9);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.clipboard-delete-confirm {
+  color: #fff;
+  background: rgba(239, 68, 68, 0.82);
+}
+
+.clipboard-delete-cancel:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.clipboard-delete-confirm:hover {
+  background: rgba(248, 113, 113, 0.92);
+}
+
+.clipboard-delete-cancel:active,
+.clipboard-delete-confirm:active {
+  transform: scale(0.96);
+}
+
+#app[data-mode="privacy-expanded"] .privacy-strip {
+  grid-template-rows: 1fr;
+  row-gap: 2px;
+  padding-top: 13px;
+  padding-bottom: 13px;
+}
+
+#app[data-mode="privacy-expanded"] .privacy-indicator {
+  align-self: center;
+}
+

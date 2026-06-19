@@ -2,9 +2,10 @@ const { runPowerShellJson: defaultRunPowerShellJson, runTextCommand: defaultRunT
 const { createInflinkBridge } = require("./inflink-bridge");
 const { createNativeMediaSession } = require("./native-media");
 const { createNeteaseProvider, isNeteaseSnapshot } = require("./netease");
+const { MEDIA_CONTROL_ACTION_SET } = require("../shared/island-contracts");
 
 const MEDIA_POLL_INTERVAL = 300;
-const MEDIA_CONTROL_ACTIONS = new Set(["toggle-play", "previous-track", "next-track", "favorite-track"]);
+const MEDIA_CONTROL_ACTIONS = MEDIA_CONTROL_ACTION_SET;
 const MEDIA_KEY_CODES = {
   "previous-track": 0xb1,
   "next-track": 0xb0,

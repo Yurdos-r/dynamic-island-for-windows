@@ -1,0 +1,70 @@
+﻿#app[data-mode="privacy-expanded"] .privacy-copy {
+  align-self: start;
+  padding-top: 1px;
+}
+
+#app[data-mode="privacy-expanded"] .privacy-detail {
+  display: block;
+  align-self: start;
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+#app[data-media-active="false"] .privacy-label {
+  color: rgba(248, 250, 252, 0.95);
+  font-size: 12px;
+}
+
+#app[data-priority-transition="media-to-privacy"] .privacy-strip {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(8px, 1px, 0) scale(0.965);
+  filter: blur(2.8px);
+  transition-delay: 0ms;
+}
+
+#app[data-priority-transition="media-to-privacy"][data-priority-stage="privacy-in"] .privacy-strip {
+  pointer-events: auto;
+  animation: media-to-privacy-in 360ms var(--transition-soft) both;
+}
+
+#app[data-priority-transition="media-to-privacy"][data-priority-stage="privacy-in"] .shared-album-art,
+#app[data-priority-transition="media-to-privacy"][data-priority-stage="privacy-in"] .shared-track-copy,
+#app[data-priority-transition="media-to-privacy"][data-priority-stage="privacy-in"] .hover-layer {
+  opacity: 0;
+  pointer-events: none;
+  filter: blur(4px);
+}
+
+#app[data-priority-transition="privacy-to-media"] .privacy-strip {
+  opacity: 1;
+  pointer-events: none;
+}
+
+#app[data-priority-transition="privacy-to-media"][data-priority-stage="privacy-out"] .privacy-strip {
+  animation: privacy-to-media-out 380ms var(--transition-soft) both;
+}
+
+#app[data-priority-transition="privacy-to-media"][data-priority-stage="music-in"] .privacy-strip {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(8px, 1px, 0) scale(0.965);
+  filter: blur(2.8px);
+  transition-delay: 0ms;
+}
+
+#app[data-priority-transition="privacy-to-media"][data-priority-stage="music-in"] .shared-album-art,
+#app[data-priority-transition="privacy-to-media"][data-priority-stage="music-in"] .shared-track-copy {
+  opacity: 1;
+  pointer-events: none;
+  filter: blur(0);
+  animation: privacy-to-media-music-in 380ms var(--transition-soft) both;
+}
+
+#app[data-priority-transition="privacy-to-media"] .hover-layer {
+  opacity: 0;
+  pointer-events: none;
+  filter: blur(4px);
+  animation: none;
+}
+

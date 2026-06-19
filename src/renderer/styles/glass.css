@@ -1,0 +1,279 @@
+﻿.island-shell {
+  position: relative;
+  width: var(--island-width);
+  height: var(--island-height);
+  overflow: hidden;
+  color: #f8fafc;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)),
+    rgba(7, 10, 18, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: var(--island-radius);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(56, 189, 248, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  contain: layout paint style;
+  pointer-events: auto;
+  transform: translateZ(0);
+  transform-origin: bottom left;
+  -webkit-app-region: no-drag;
+  will-change: width, height, border-radius, transform, opacity;
+  transition:
+    width 460ms var(--ease-spring-soft),
+    height 460ms var(--ease-spring-soft),
+    border-radius 460ms var(--ease-spring-soft),
+    transform 380ms var(--ease-spring-soft),
+    background 180ms var(--transition-soft),
+    border-color 180ms var(--transition-soft),
+    box-shadow 180ms var(--transition-soft),
+    backdrop-filter 260ms var(--transition-soft),
+    -webkit-backdrop-filter 260ms var(--transition-soft);
+}
+
+/* ============================================================
+   鐜荤拑椋庢牸锛堢敤鎴峰湪璁剧疆鍗＄墖涓垏鎹紝榛樿 classic锛?   鍙鐩?.island-shell 鐨?鏉愯川"灞炴€р€斺€旇儗鏅?/ 杈规 / 闃村奖 /
+   backdrop-filter鈥斺€旂粷涓嶈Е纰板昂瀵搞€佸渾瑙掋€佸姩鐢汇€佸竷灞€锛屼互涓庣幇鏈?   鐘舵€佹満鍜屽舰鍙橀€昏緫瀹屽叏闅旂銆俢lassic 涓嶅啓瑕嗙洊锛屾部鐢ㄤ笂鏂归粯璁ゅ€笺€?
+   鐗瑰紓鎬ц鏄庯細鐜版湁鐨?   #app[data-media-active="false"][data-mode="idle"] .island-shell
+   鏄?(1 id + 2 attr + 1 class)銆備负绋冲畾鍘嬭繃瀹冿紝娑叉€侀鏍肩敤
+   #app[data-glass="鈥?][data-media-active] .island-shell
+   杈惧埌 (1 id + 2 attr + 1 class) 骞朵功鍐欏湪鍚庯紝浠庤€岃儨鍑恒€?   ============================================================ */
+
+/* 鏂规 B 鈥斺€?绾?CSS 鎷熺湡娑叉€佺幓鐠冿細鏇撮€忋€佹洿钖?+ 澶氬眰闀滈潰楂樺厜 */
+#app[data-glass="liquid-css"][data-media-active] .island-shell,
+#app[data-glass="liquid-css"] .island-shell {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.04) 40%, rgba(255, 255, 255, 0.1)),
+    rgba(15, 23, 42, 0.28);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.55),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.12),
+    inset 1px 0 1px rgba(255, 255, 255, 0.2),
+    inset -1px 0 1px rgba(255, 255, 255, 0.2),
+    inset 0 -16px 28px -22px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(var(--glass-blur)) saturate(calc(var(--glass-saturate) * 1.28)) brightness(1.05);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(calc(var(--glass-saturate) * 1.28)) brightness(1.05);
+}
+
+#app[data-glass="liquid-css"] .island-shell::before {
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.18) 40%,
+    rgba(255, 255, 255, 0.32) 50%,
+    rgba(255, 255, 255, 0) 62%
+  );
+}
+
+#app[data-glass="liquid-css"] .island-shell::after {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 0 12px rgba(255, 255, 255, 0.1);
+}
+
+/* 鏂规 C 鈥斺€?SVG 浣嶇Щ鎶樺皠娑叉€佺幓鐠冿細杈圭紭鐪熷疄寮姌鑳屾櫙锛堝紩鐢?index.html 涓殑婊ら暅锛?*/
+#app[data-glass="liquid-svg"][data-media-active] .island-shell,
+#app[data-glass="liquid-svg"] .island-shell {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02) 45%, rgba(255, 255, 255, 0.08)),
+    rgba(15, 23, 42, 0.18);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.32),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.6),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 -16px 28px -22px rgba(0, 0, 0, 0.5);
+  backdrop-filter: url(#liquid-glass-displace) blur(calc(var(--glass-blur) * 0.3)) saturate(calc(var(--glass-saturate) * 1.15)) brightness(1.06);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.3)) saturate(calc(var(--glass-saturate) * 1.15)) brightness(1.06);
+}
+
+#app[data-glass="liquid-svg"] .island-shell::after {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+    inset 0 0 16px rgba(255, 255, 255, 0.12);
+}
+
+#app[data-mode="hover"] .island-shell,
+#app[data-mode="peek"] .island-shell,
+#app[data-mode="privacy-expanded"] .island-shell,
+#app[data-mode="expanded"] .island-shell,
+#app[data-mode="clipboard"] .island-shell,
+#app[data-mode="settings"] .island-shell,
+#app[data-mode="system"] .island-shell {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.045) 42%, rgba(255, 255, 255, 0.1)),
+    rgba(8, 13, 22, 0.58);
+  border-color: rgba(255, 255, 255, 0.24);
+  backdrop-filter: blur(calc(var(--glass-blur) + 10px)) saturate(calc(var(--glass-saturate) * 1.22)) brightness(0.96);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 10px)) saturate(calc(var(--glass-saturate) * 1.22)) brightness(0.96);
+}
+
+#app[data-glass="liquid-svg"][data-mode="hover"] .island-shell,
+#app[data-glass="liquid-svg"][data-mode="peek"] .island-shell,
+#app[data-glass="liquid-svg"][data-mode="privacy-expanded"] .island-shell,
+#app[data-glass="liquid-svg"][data-mode="expanded"] .island-shell,
+#app[data-glass="liquid-svg"][data-mode="clipboard"] .island-shell,
+#app[data-glass="liquid-svg"][data-mode="settings"] .island-shell,
+#app[data-glass="liquid-svg"][data-mode="system"] .island-shell {
+  backdrop-filter: url(#liquid-glass-displace) blur(calc(var(--glass-blur) * 0.62)) saturate(calc(var(--glass-saturate) * 1.22)) brightness(0.96);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 10px)) saturate(calc(var(--glass-saturate) * 1.22)) brightness(0.96);
+}
+
+/* Capsule morphs (idle / peek / hover / privacy) have generous room inside
+   the stage window, so they get the full underdamped spring 鈥?the visible
+   overshoot is what reads as "weight". Cards (expanded / clipboard) keep the
+   soft curve above because a bounce would clip against the tight window. */
+#app[data-mode="idle"] .island-shell,
+#app[data-mode="peek"] .island-shell,
+#app[data-mode="hover"] .island-shell,
+#app[data-mode="privacy"] .island-shell,
+#app[data-mode="privacy-expanded"] .island-shell,
+#app[data-mode="clipboard-prompt"] .island-shell {
+  transition:
+    width 480ms var(--ease-spring),
+    height 480ms var(--ease-spring),
+    border-radius 480ms var(--ease-spring),
+    transform 420ms var(--ease-spring),
+    background 180ms var(--transition-soft),
+    border-color 180ms var(--transition-soft),
+    box-shadow 180ms var(--transition-soft),
+    backdrop-filter 260ms var(--transition-soft),
+    -webkit-backdrop-filter 260ms var(--transition-soft);
+}
+
+#app[data-media-active="false"][data-mode="idle"] .island-shell::before,
+#app[data-media-active="false"][data-mode="peek"] .island-shell::before {
+  opacity: 1;
+}
+
+#app[data-media-entering="true"] .island-shell::before {
+  opacity: 0;
+}
+
+#app[data-media-exiting="true"] .island-shell::before {
+  opacity: 1;
+  transition-duration: 200ms;
+}
+
+#app[data-media-exiting="true"] .island-shell {
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 14px 34px rgba(2, 6, 23, 0.22),
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+#app[data-media-exiting="true"] .island-shell::after {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+#app[data-returning-from-expanded="true"] .island-shell {
+  transition:
+    width 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius 600ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 220ms var(--transition-soft),
+    border-color 220ms var(--transition-soft),
+    box-shadow 260ms var(--transition-soft),
+    backdrop-filter 320ms var(--transition-soft),
+    -webkit-backdrop-filter 320ms var(--transition-soft);
+}
+
+#app[data-returning-from-clipboard="true"] .island-shell {
+  animation: none;
+  transition:
+    width 640ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 640ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 580ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 220ms ease,
+    border-color 220ms ease,
+    box-shadow 300ms ease,
+    backdrop-filter 320ms ease,
+    -webkit-backdrop-filter 320ms ease;
+}
+
+#app[data-entering-clipboard="true"] .island-shell {
+  transition:
+    width 500ms cubic-bezier(0.18, 0.9, 0.22, 1),
+    height 500ms cubic-bezier(0.18, 0.9, 0.22, 1),
+    border-radius 500ms cubic-bezier(0.18, 0.9, 0.22, 1),
+    transform 440ms cubic-bezier(0.18, 0.9, 0.22, 1),
+    background 220ms ease,
+    border-color 220ms ease,
+    box-shadow 260ms ease,
+    backdrop-filter 300ms ease,
+    -webkit-backdrop-filter 300ms ease;
+}
+
+.island-shell::after {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  content: "";
+  pointer-events: none;
+}
+
+.island-shell::before {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.035) 46%, rgba(255, 255, 255, 0.1)),
+    rgba(13, 18, 28, 0.2);
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms var(--transition-soft);
+}
+
+#app[data-mode="hover"] .island-shell::before,
+#app[data-mode="peek"] .island-shell::before,
+#app[data-mode="privacy-expanded"] .island-shell::before,
+#app[data-mode="expanded"] .island-shell::before,
+#app[data-mode="clipboard"] .island-shell::before,
+#app[data-mode="settings"] .island-shell::before,
+#app[data-mode="system"] .island-shell::before {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.035) 46%, rgba(255, 255, 255, 0.08)),
+    rgba(2, 6, 23, 0.22);
+  opacity: 1;
+}
+
+#app[data-media-active="false"][data-mode="idle"] .island-shell,
+#app[data-media-active="false"][data-mode="peek"] .island-shell {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.045) 50%, rgba(255, 255, 255, 0.11)),
+    rgba(10, 16, 24, 0.24);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 14px 34px rgba(2, 6, 23, 0.22),
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(22px) saturate(1.55);
+  -webkit-backdrop-filter: blur(22px) saturate(1.55);
+}
+
+#app[data-media-active="false"][data-mode="peek"] .island-shell {
+  border-color: rgba(255, 255, 255, 0.34);
+  box-shadow:
+    0 16px 38px rgba(2, 6, 23, 0.24),
+    0 0 18px rgba(255, 255, 255, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+}
+
+#app[data-media-active="false"][data-mode="idle"] .island-shell::after,
+#app[data-media-active="false"][data-mode="peek"] .island-shell::after {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 0 18px rgba(255, 255, 255, 0.05);
+}
+

@@ -1,0 +1,124 @@
+﻿#app {
+  --island-width: 360px;
+  --island-height: 44px;
+  --island-radius: 22px;
+  /* 鐜荤拑寮哄害锛堢敱 data-glass-intensity 瑕嗙洊锛岄粯璁?medium锛夈€備笁绉嶇幓鐠冮鏍肩殑
+     backdrop-filter 缁熶竴璇昏繖涓や釜鍙橀噺锛屽己搴﹀嵆鍦ㄦ璋冭妭妯＄硦涓庨ケ鍜屻€?*/
+  --glass-blur: 14px;
+  --glass-saturate: 1.4;
+  --transition-spring: cubic-bezier(0.2, 0.85, 0.18, 1);
+  --transition-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-peak: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Spring easing 鈥?replicates Framer Motion's spring(stiffness 300,
+     damping 26, mass 1): an underdamped curve (味鈮?.75) that overshoots the
+     target by ~2.8% then settles. This is what gives the capsule its "jelly"
+     weight instead of the flat glide of a plain ease-out. Sampled from the
+     analytic spring response over its ~500ms natural settle, normalised so it
+     lands exactly on 1 at 100% (so the property never ends off-target). */
+  --ease-spring: linear(
+    0, 0.075 5%, 0.24 10%, 0.429 15%, 0.606 20%, 0.751 25%, 0.861 30%,
+    0.937 35%, 0.985 40%, 1.012 45%, 1.025 50%, 1.028 55%, 1.026 60%,
+    1.021 65%, 1.016 70%, 1.011 75%, 1.007 80%, 1.002 90%, 1
+  );
+  /* Gentler partner with almost no overshoot, for surfaces where an overshoot
+     would clip against the window bounds (the expanded / clipboard cards). */
+  --ease-spring-soft: linear(
+    0, 0.09 5%, 0.279 10%, 0.483 15%, 0.66 20%, 0.795 25%, 0.888 30%,
+    0.947 35%, 0.981 40%, 0.998 45%, 1.005 50%, 1.006 55%, 1.005 65%,
+    1.002 75%, 1
+  );
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: 2px;
+  pointer-events: none;
+  /* 浠诲姟鏍忛€€閬匡細鑳跺泭鏁翠綋绛夋瘮缂╁皬璁╀綅锛堢敱涓昏繘绋嬫寜浠诲姟鏍忓浘鏍囧尯宸︾紭涓嬪彂 --avoid-scale锛夈€?     浠庡乏涓嬭缂╂斁锛屼繚鎸佽兌鍥婅创杈逛笉浣嶇Щ銆傜敤寮圭哀鏇茬嚎璁╃缉鏀?澶嶄綅椤烘粦銆?*/
+  --avoid-scale: 1;
+  transform: scale(var(--avoid-scale));
+  transform-origin: bottom left;
+  transition: transform 420ms var(--ease-spring-soft);
+}
+
+#app[data-mode="hover"] {
+  --island-width: 360px;
+  --island-height: 78px;
+  --island-radius: 30px;
+}
+
+#app[data-mode="peek"] {
+  --island-width: 360px;
+  --island-height: 48px;
+  --island-radius: 24px;
+}
+
+#app[data-mode="clipboard-prompt"] {
+  --island-width: 360px;
+  --island-height: 48px;
+  --island-radius: 24px;
+}
+
+#app[data-mode="privacy"] {
+  --island-width: 360px;
+  --island-height: 44px;
+  --island-radius: 22px;
+}
+
+#app[data-mode="privacy-expanded"] {
+  --island-width: 360px;
+  --island-height: 78px;
+  --island-radius: 30px;
+}
+
+#app[data-mode="expanded"] {
+  --island-width: 450px;
+  --island-height: 336px;
+  --island-radius: 32px;
+}
+
+#app[data-mode="clipboard"] {
+  --island-width: 450px;
+  --island-height: 336px;
+  --island-radius: 32px;
+}
+
+#app[data-mode="settings"] {
+  --island-width: 360px;
+  --island-height: 264px;
+  --island-radius: 30px;
+}
+
+/* 椤堕儴灞呬腑甯冨眬涓嬶紝绯荤粺鐩戞帶浠ョ嫭绔嬪崱鐗囨€佸唴宓屼富鑳跺泭锛?60脳300锛夈€?*/
+#app[data-mode="system"] {
+  --island-width: 360px;
+  --island-height: 300px;
+  --island-radius: 30px;
+}
+
+/* ============================================================
+   甯冨眬锛氶《閮ㄥ眳涓紙data-layout="top-center"锛?   缁忓吀甯冨眬娌跨敤榛樿锛堝乏涓嬪仠闈狅紝bottom left 褰㈠彉鍘熺偣锛夈€傞《閮ㄥ眳涓?   鎶婅兌鍥婃敼涓哄睆骞曢《閮ㄦ按骞冲眳涓紝鍗＄墖鍚戜笅鐢熼暱锛屾晠褰㈠彉鍘熺偣鏀?top center銆?   ============================================================ */
+#app[data-layout="top-center"] {
+  align-items: flex-start;
+  justify-content: center;
+  transform-origin: top center;
+}
+
+#app[data-layout="top-center"] .island-shell {
+  transform-origin: top center;
+}
+
+/* 鐜荤拑寮哄害涓夋。锛氳皟鑺傛ā绯婇噺涓庨ケ鍜屽害锛屽涓夌鐜荤拑椋庢牸缁熶竴鐢熸晥銆?   娑叉€佹姌灏勯鏍肩殑 SVG 浣嶇Щ scale 鍙︾敱 JS 鎸夋。浣嶈仈鍔ㄨ缃€?*/
+#app[data-glass-intensity="low"] {
+  --glass-blur: 6px;
+  --glass-saturate: 1.15;
+}
+
+#app[data-glass-intensity="medium"] {
+  --glass-blur: 14px;
+  --glass-saturate: 1.4;
+}
+
+#app[data-glass-intensity="high"] {
+  --glass-blur: 26px;
+  --glass-saturate: 1.85;
+}
+

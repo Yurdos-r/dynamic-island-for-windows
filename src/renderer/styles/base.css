@@ -1,0 +1,53 @@
+﻿:root {
+  color: #f8fafc;
+  --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-fast: 120ms;
+  --motion-medium: 210ms;
+  font-family:
+    Inter, "Segoe UI", "Microsoft YaHei UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  text-rendering: geometricPrecision;
+  background: transparent;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  appearance: none;
+}
+
+button,
+input {
+  -webkit-app-region: no-drag;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.progress-track {
+  -webkit-app-region: no-drag;
+}
+

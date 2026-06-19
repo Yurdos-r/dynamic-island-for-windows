@@ -1,4 +1,5 @@
-import { Activity, Cpu, Gauge, HardDrive, MemoryStick, createIcons } from "lucide";
+import { createIcons } from "lucide";
+import { lucideIcons } from "./app/icons";
 
 // 系统监控视图的共享构建/同步逻辑。原本只存在于 system.ts（独立窗口），现在主窗口的
 // 顶部居中布局也要内嵌系统监控卡片，于是抽成 root 作用域的纯函数：所有查询都基于传入的
@@ -27,7 +28,6 @@ export interface SystemSnapshot {
   updatedAt: number;
 }
 
-const icons = { Activity, Cpu, Gauge, HardDrive, MemoryStick };
 const TILE_COUNT = 24;
 
 export const EMPTY_SYSTEM_SNAPSHOT: SystemSnapshot = {
@@ -236,7 +236,7 @@ export function buildSystemCard(): HTMLElement {
 
 // 渲染 lucide 图标。在追加完所有系统视图节点后调用一次即可（root 作用域）。
 export function renderSystemIcons(root: Element | Document | DocumentFragment) {
-  createIcons({ icons, root });
+  createIcons({ icons: lucideIcons, root });
 }
 
 function normalizePartial(raw: Partial<SystemSnapshot> | undefined, fallbackUpdatedAt: number): SystemSnapshot {
