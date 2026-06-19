@@ -10,102 +10,67 @@ import {
 } from "../system-view";
 import { createElement, createIcon } from "./dom";
 import { lucideIcons } from "./icons";
+import type { ClipboardItem, ClipboardSnapshot, LyricLine, PrivacySnapshot, SettingsPage, TrackState } from "./state";
+import {
+  getAvailableCardModesForState,
+  isCapsuleMode as isCapsuleModeFromController,
+  isCardMode as isCardModeFromController,
+  isTransparentIdleMode as isTransparentIdleModeFromController,
+  resolveRendererModeForMediaState
+} from "./controllers/mode-controller";
+import {
+  clampProgressSecondsForTrack,
+  formatMediaTime,
+  getActiveLyricIndexForProgress,
+  getDisplayedLyricsForState,
+  getProgressPercent,
+  getProgressSecondsFromPointerPosition
+} from "./controllers/media-controller";
+import {
+  getPrivacyAppsForKind,
+  getPrivacyDetailTextForKind,
+  getPrivacyDisplayName as getPrivacyDisplayNameFromController,
+  getPrivacyLabelForKind
+} from "./controllers/privacy-controller";
+import {
+  formatClipboardTimestamp,
+  normalizeClipboardSnapshot as normalizeClipboardSnapshotFromController
+} from "./controllers/clipboard-controller";
+import {
+  isGlassIntensityValue,
+  isGlassStyleValue,
+  isLayoutValue,
+  persistGlassIntensityValue,
+  persistGlassStyleValue,
+  readStoredGlassIntensityValue,
+  readStoredGlassStyleValue
+} from "./controllers/settings-controller";
+import { createClipboardRow } from "./views/clipboard-view";
+import { appendMediaControls } from "./views/media-view";
+import { buildSettingsLayer } from "./views/settings-view";
+import {
+  CAPSULE_APPEAR_TRANSITION_MS,
+  DEFAULT_GLASS_INTENSITY,
+  DEFAULT_GLASS_STYLE,
+  GLASS_INTENSITY_DISPLACE_SCALE,
+  GLASS_INTENSITY_STORAGE_KEY,
+  GLASS_STYLE_STORAGE_KEY,
+  ISLAND_STATE_NAMES,
+  MEDIA_ENTER_TRANSITION_MS,
+  MEDIA_EXIT_TRANSITION_MS,
+  PRIORITY_TRANSITION_MEDIA_TO_PRIVACY,
+  PRIORITY_TRANSITION_PRIVACY_TO_MEDIA,
+  PRIVACY_PRIORITY_STAGE_SWITCH_MS,
+  PRIVACY_PRIORITY_TRANSITION_MS,
+  PRIVACY_TO_MEDIA_IDLE_DELAY_MS,
+  SETTINGS_LONG_PRESS_MS,
+  createDefaultTrack,
+  createEmptyClipboardSnapshot,
+  createEmptyPrivacySnapshot
+} from "./state";
 
-interface TrackState {
-  title: string;
-  artist: string;
-  cover?: string;
-  durationSeconds: number;
-}
+let track: TrackState = createDefaultTrack();
 
-interface LyricLine {
-  timeMs: number;
-  text: string;
-  translation?: string;
-}
-
-interface PrivacySnapshot {
-  available: boolean;
-  active: boolean;
-  kind: "microphone" | "camera" | "location" | "none";
-  activeKinds: Array<"microphone" | "camera" | "location">;
-  apps?: Array<{
-    kind: "microphone" | "camera" | "location";
-    app: string;
-    displayName?: string;
-    startedAt: number;
-  }>;
-  updatedAt: number;
-}
-
-interface ClipboardItem {
-  id: string;
-  text: string;
-  preview: string;
-  copiedAt: number;
-}
-
-interface ClipboardSnapshot {
-  active: boolean;
-  text: string;
-  preview: string;
-  pending?: ClipboardItem;
-  items: ClipboardItem[];
-  updatedAt: number;
-}
-
-let track: TrackState = {
-  title: "Cloudline",
-  artist: "Lo-fi Focus",
-  durationSeconds: 228
-};
-
-const ISLAND_STATE_NAMES = {
-  capsule: "胶囊",
-  island: "小岛",
-  card: "卡片"
-} as const;
-
-const GLASS_STYLE_OPTIONS: ReadonlyArray<{ id: GlassStyle; label: string; hint: string }> = [
-  { id: "classic", label: "经典", hint: "默认毛玻璃" },
-  { id: "liquid-css", label: "液态", hint: "通透 · 镜面高光" },
-  { id: "liquid-svg", label: "液态折射", hint: "边缘折射 · 较耗性能" }
-];
-const DEFAULT_GLASS_STYLE: GlassStyle = "classic";
-const GLASS_STYLE_STORAGE_KEY = "dynamic-island:glass-style";
-const GLASS_INTENSITY_OPTIONS: ReadonlyArray<{ id: GlassIntensity; label: string }> = [
-  { id: "low", label: "弱" },
-  { id: "medium", label: "中" },
-  { id: "high", label: "强" }
-];
-const DEFAULT_GLASS_INTENSITY: GlassIntensity = "medium";
-const GLASS_INTENSITY_STORAGE_KEY = "dynamic-island:glass-intensity";
-// 液态折射 SVG 位移强度，按档位联动（与 styles.css 的 blur/saturate 配合）。
-const GLASS_INTENSITY_DISPLACE_SCALE: Record<GlassIntensity, number> = {
-  low: 28,
-  medium: 62,
-  high: 104
-};
-const SETTINGS_LONG_PRESS_MS = 550;
-// 布局选项：经典（左下主胶囊 + 右下系统监控）/ 顶部居中（单胶囊，系统监控并入）。
-const LAYOUT_OPTIONS: ReadonlyArray<{ id: IslandLayout; label: string; hint: string }> = [
-  { id: "classic", label: "经典", hint: "左下胶囊 · 右下系统监控" },
-  { id: "top-center", label: "顶部居中", hint: "屏幕顶部单胶囊" }
-];
-// 设置中心导航项 → 对应二级页。
-const SETTINGS_NAV_ITEMS: ReadonlyArray<{ page: "appearance" | "layout" | "monitor"; label: string; hint: string }> = [
-  { page: "appearance", label: "外观", hint: "玻璃质感与强度" },
-  { page: "layout", label: "布局", hint: "胶囊位置与呈现" },
-  { page: "monitor", label: "系统监控", hint: "显示或隐藏系统监控" }
-];
-const PRIVACY_PRIORITY_TRANSITION_MS = 720;
-const PRIVACY_PRIORITY_STAGE_SWITCH_MS = 360;
-const PRIVACY_TO_MEDIA_IDLE_DELAY_MS = 140;
-const MEDIA_ENTER_TRANSITION_MS = 220;
-const MEDIA_EXIT_TRANSITION_MS = 200;
-const CAPSULE_APPEAR_TRANSITION_MS = 220;
-const PRIORITY_TRANSITION_MEDIA_TO_PRIVACY = "media-to-privacy";
-const PRIORITY_TRANSITION_PRIVACY_TO_MEDIA = "privacy-to-media";
 const appRoot = document.querySelector<HTMLDivElement>("#app");
 
 if (!appRoot) {
@@ -119,7 +84,7 @@ let glassIntensity: GlassIntensity = readStoredGlassIntensity();
 let settingsReturnMode: IslandMode = "idle";
 let settingsLongPressTimer: number | undefined;
 // 设置中心当前子页：hub=导航首页，其余三项为二级页。仅在 mode==="settings" 时有意义。
-let settingsPage: "hub" | "appearance" | "layout" | "monitor" = "hub";
+let settingsPage: SettingsPage = "hub";
 // 胶囊布局 + 系统监控全局开关。权威值在主进程，启动时经 getUiSettings 拉取、
 // 经 onLayoutChanged 同步。renderer 这份是镜像，用于决定内嵌系统卡/静息读数显隐。
 let layout: IslandLayout = "classic";
@@ -153,13 +118,7 @@ let lastPlaybackSyncTime = window.performance.now();
 let privacyExpanded = false;
 let wasPrivacyActive = false;
 let privacyReturnMode: IslandMode = "idle";
-let clipboardSnapshot: ClipboardSnapshot = {
-  active: false,
-  text: "",
-  preview: "",
-  items: [],
-  updatedAt: 0
-};
+let clipboardSnapshot: ClipboardSnapshot = createEmptyClipboardSnapshot();
 let clipboardPromptVisible = false;
 let clipboardPromptTimer: number | undefined;
 let clipboardReturnMode: IslandMode = "idle";
@@ -180,34 +139,18 @@ let priorityTransitionTimer: number | undefined;
 let priorityTransitionStageTimer: number | undefined;
 let priorityTransitionSettleTimer: number | undefined;
 let pendingPrivacySnapshot: PrivacySnapshot | undefined;
-let privacyState: PrivacySnapshot = {
-  available: false,
-  active: false,
-  kind: "none",
-  activeKinds: [],
-  apps: [],
-  updatedAt: 0
-};
+let privacyState: PrivacySnapshot = createEmptyPrivacySnapshot();
 
 function isGlassStyle(value: unknown): value is GlassStyle {
-  return value === "classic" || value === "liquid-css" || value === "liquid-svg";
+  return isGlassStyleValue(value);
 }
 
 function readStoredGlassStyle(): GlassStyle {
-  try {
-    const stored = window.localStorage.getItem(GLASS_STYLE_STORAGE_KEY);
-    return isGlassStyle(stored) ? stored : DEFAULT_GLASS_STYLE;
-  } catch {
-    return DEFAULT_GLASS_STYLE;
-  }
+  return readStoredGlassStyleValue(GLASS_STYLE_STORAGE_KEY, DEFAULT_GLASS_STYLE);
 }
 
 function persistGlassStyle(style: GlassStyle) {
-  try {
-    window.localStorage.setItem(GLASS_STYLE_STORAGE_KEY, style);
-  } catch {
-    // Best effort only — settings still apply for the current session.
-  }
+  persistGlassStyleValue(GLASS_STYLE_STORAGE_KEY, style);
 }
 
 function setGlassStyle(style: GlassStyle) {
@@ -221,24 +164,15 @@ function setGlassStyle(style: GlassStyle) {
 }
 
 function isGlassIntensity(value: unknown): value is GlassIntensity {
-  return value === "low" || value === "medium" || value === "high";
+  return isGlassIntensityValue(value);
 }
 
 function readStoredGlassIntensity(): GlassIntensity {
-  try {
-    const stored = window.localStorage.getItem(GLASS_INTENSITY_STORAGE_KEY);
-    return isGlassIntensity(stored) ? stored : DEFAULT_GLASS_INTENSITY;
-  } catch {
-    return DEFAULT_GLASS_INTENSITY;
-  }
+  return readStoredGlassIntensityValue(GLASS_INTENSITY_STORAGE_KEY, DEFAULT_GLASS_INTENSITY);
 }
 
 function persistGlassIntensity(intensity: GlassIntensity) {
-  try {
-    window.localStorage.setItem(GLASS_INTENSITY_STORAGE_KEY, intensity);
-  } catch {
-    // Best effort only.
-  }
+  persistGlassIntensityValue(GLASS_INTENSITY_STORAGE_KEY, intensity);
 }
 
 function applyGlassIntensityToFilter() {
@@ -260,7 +194,7 @@ function setGlassIntensity(intensity: GlassIntensity) {
 }
 
 function isLayout(value: unknown): value is IslandLayout {
-  return value === "classic" || value === "top-center";
+  return isLayoutValue(value);
 }
 
 // 布局/开关变化后，如果当前正停在已失效的内嵌系统卡（切回经典或关闭监控），退回静息态。
@@ -389,51 +323,26 @@ function scheduleSettingsLongPress(pointerId: number) {
 }
 
 function resolveModeForMediaState(nextMode: IslandMode) {
-  if (nextMode === "clipboard" || nextMode === "clipboard-prompt") {
-    return nextMode;
-  }
-
-  if (
-    systemMediaActive ||
-    nextMode === "idle" ||
-    nextMode === "peek" ||
-    nextMode === "settings" ||
-    nextMode === "privacy" ||
-    nextMode === "privacy-expanded"
-  ) {
-    return nextMode;
-  }
-
-  // 系统监控卡片仅在顶部居中 + 监控开启时有效，无前台媒体也可独立展示。
-  if (nextMode === "system" && hasSystemCard()) {
-    return nextMode;
-  }
-
-  return "idle";
+  return resolveRendererModeForMediaState(nextMode, {
+    privacyActive: privacyState.active,
+    systemMediaActive
+  });
 }
 
 function formatTime(totalSeconds: number) {
-  const clampedSeconds = Math.max(0, Math.round(totalSeconds));
-  const minutes = Math.floor(clampedSeconds / 60);
-  const seconds = clampedSeconds % 60;
-
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  return formatMediaTime(totalSeconds);
 }
 
 function progressPercent() {
-  return `${Math.round((progressSeconds / Math.max(1, track.durationSeconds)) * 1000) / 10}%`;
+  return getProgressPercent(progressSeconds, track.durationSeconds);
 }
 
 function clampProgressSeconds(seconds: number) {
-  const numericSeconds = Number.isFinite(seconds) ? seconds : 0;
-  return Math.max(0, Math.min(track.durationSeconds, numericSeconds));
+  return clampProgressSecondsForTrack(seconds, track);
 }
 
 function getProgressSecondsFromPointer(event: PointerEvent, progressTrack: HTMLElement) {
-  const rect = progressTrack.getBoundingClientRect();
-  const width = Math.max(1, rect.width);
-  const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / width));
-  return clampProgressSeconds(ratio * track.durationSeconds);
+  return getProgressSecondsFromPointerPosition(event, progressTrack, track);
 }
 
 function setProgressPreview(seconds: number) {
@@ -442,66 +351,27 @@ function setProgressPreview(seconds: number) {
 }
 
 function getActiveLyricIndex() {
-  if (!lyrics.length) {
-    return -1;
-  }
-
-  const nowMs = progressSeconds * 1000 + 250;
-  const nextIndex = lyrics.findIndex((line) => line.timeMs > nowMs);
-  return Math.max(0, nextIndex === -1 ? lyrics.length - 1 : nextIndex - 1);
+  return getActiveLyricIndexForProgress(lyrics, progressSeconds);
 }
 
 function getDisplayedLyrics() {
-  if (lyrics.length) {
-    return lyrics;
-  }
-
-  return [
-    {
-      timeMs: 0,
-      text: systemMediaActive ? "No synced lyrics" : "Waiting for music",
-      translation: ""
-    }
-  ];
+  return getDisplayedLyricsForState(lyrics, systemMediaActive);
 }
 
 function getPrivacyLabel(kind: PrivacySnapshot["kind"]) {
-  if (kind === "microphone") {
-    return "麦克风调用中";
-  }
-
-  if (kind === "camera") {
-    return "摄像头调用中";
-  }
-
-  if (kind === "location") {
-    return "定位调用中";
-  }
-
-  return "";
+  return getPrivacyLabelForKind(kind);
 }
 
 function getPrivacyApps(kind: PrivacySnapshot["kind"]) {
-  return (privacyState.apps || []).filter((item) => item.kind === kind);
+  return getPrivacyAppsForKind(privacyState, kind);
 }
 
 function getPrivacyDisplayName(app: string) {
-  const normalized = app.replace(/#/g, "\\");
-  const fileName = normalized.split("\\").filter(Boolean).pop() || normalized;
-  return fileName.replace(/_/g, " ");
+  return getPrivacyDisplayNameFromController(app);
 }
 
 function getPrivacyDetailText(kind: PrivacySnapshot["kind"]) {
-  const apps = getPrivacyApps(kind);
-
-  if (!apps.length) {
-    return "未识别到调用程序";
-  }
-
-  return apps
-    .slice(0, 3)
-    .map((item) => item.displayName || getPrivacyDisplayName(item.app))
-    .join(" · ");
+  return getPrivacyDetailTextForKind(privacyState, kind);
 }
 
 function canUseClipboardCard() {
@@ -669,38 +539,11 @@ function rejectClipboardPrompt() {
 }
 
 function normalizeClipboardSnapshot(snapshot: ClipboardSnapshot | undefined): ClipboardSnapshot {
-  const normalizeItem = (item: ClipboardItem) => ({
-    id: typeof item.id === "string" ? item.id : `${item.copiedAt || Date.now()}-${item.text.slice(0, 12)}`,
-    text: item.text,
-    preview: typeof item.preview === "string" && item.preview ? item.preview : item.text.replace(/\s+/g, " ").trim().slice(0, 160),
-    copiedAt: Number(item.copiedAt || Date.now())
-  });
-  const items = Array.isArray(snapshot?.items)
-    ? snapshot.items
-        .filter((item) => typeof item?.text === "string" && item.text.trim())
-        .map(normalizeItem)
-    : [];
-  const pending =
-    typeof snapshot?.pending?.text === "string" && snapshot.pending.text.trim()
-      ? normalizeItem(snapshot.pending)
-      : undefined;
-
-  const activeItem = items[0];
-  return {
-    active: Boolean(pending || activeItem),
-    text: typeof snapshot?.text === "string" ? snapshot.text : pending?.text || activeItem?.text || "",
-    preview: typeof snapshot?.preview === "string" ? snapshot.preview : pending?.preview || activeItem?.preview || "",
-    pending,
-    items,
-    updatedAt: Number(snapshot?.updatedAt || Date.now())
-  };
+  return normalizeClipboardSnapshotFromController(snapshot);
 }
 
 function formatClipboardTime(timestamp: number) {
-  const date = new Date(timestamp);
-  const hours = date.getHours().toString().padStart(2, "0");
-  const minutes = date.getMinutes().toString().padStart(2, "0");
-  return `${hours}:${minutes}`;
+  return formatClipboardTimestamp(timestamp);
 }
 
 function hasMusicCard() {
@@ -726,37 +569,17 @@ function isIdleSystemActive() {
 }
 
 function getAvailableCardModes(): IslandMode[] {
-  const modes: IslandMode[] = [];
-
-  if (hasPrivacyIsland()) {
-    modes.push("privacy-expanded");
-  }
-
-  if (hasMusicCard()) {
-    modes.push("expanded");
-  }
-
-  if (hasClipboardCard()) {
-    modes.push("clipboard");
-  }
-
-  // 系统监控仅在已有其他前台内容（音乐/权限/剪贴板）时作为卡片接入轮播。
-  // 当它是唯一内容时，走静息胶囊常驻读数（点击展开），不进轮播——与经典 idle 一致。
-  if (hasSystemCard() && modes.length > 0) {
-    modes.push("system");
-  }
-
-  // 设置作为翻页循环的最后一页：只要已处于某个展开卡片态，滚轮即可滚到设置。
-  // 纯 idle（无任何卡片）时循环里只有 settings 一项，wheel 不会劫持，故空闲态不误触。
-  if (modes.length > 0) {
-    modes.push("settings");
-  }
-
-  return modes;
+  return getAvailableCardModesForState({
+    hasClipboardCard: hasClipboardCard(),
+    hasMusicCard: hasMusicCard(),
+    hasPrivacyIsland: hasPrivacyIsland(),
+    hasSystemCard: hasSystemCard(),
+    systemMediaActive
+  });
 }
 
 function isCardMode(nextMode = mode) {
-  return nextMode === "expanded" || nextMode === "clipboard" || nextMode === "privacy-expanded" || nextMode === "system" || nextMode === "settings";
+  return isCardModeFromController(nextMode);
 }
 
 function switchCardPage(direction: number) {
@@ -1023,75 +846,6 @@ async function commitProgress(seconds: number) {
   return undefined;
 }
 
-function appendPlayPauseIcons(button: HTMLButtonElement, label = "播放或暂停") {
-  const pauseIcon = createElement("span", { className: "pause-icon" });
-  const playIcon = createElement("span", { className: "play-icon" });
-
-  pauseIcon.append(createIcon("pause", label));
-  playIcon.append(createIcon("play", label));
-  button.append(pauseIcon, playIcon);
-}
-
-function createMediaControlButton(action: string, iconName: string, label: string, size: "compact" | "expanded", primary = false) {
-  const compactClass = size === "compact" ? " compact" : "";
-  const primaryClass = primary ? " primary" : "";
-  const button = createElement("button", {
-    className: `media-control-button${compactClass}${primaryClass}`,
-    attributes: {
-      type: "button",
-      "aria-label": label
-    },
-    dataset: {
-      action
-    }
-  });
-
-  if (primary) {
-    button.classList.add("play-toggle");
-    appendPlayPauseIcons(button);
-  } else {
-    button.append(createIcon(iconName, label));
-  }
-
-  return button;
-}
-
-function appendMediaControls(parent: HTMLElement, size: "compact" | "expanded") {
-  parent.append(
-    createMediaControlButton("previous-track", "skip-back", "上一首", size),
-    createMediaControlButton("toggle-play", "play", "暂停", size, true),
-    createMediaControlButton("next-track", "skip-forward", "下一首", size),
-    createMediaControlButton("favorite-track", "heart", "收藏当前歌曲", size)
-  );
-}
-
-function createClipboardRow(item: ClipboardItem, index: number) {
-  const row = createElement("button", {
-    className: "clipboard-row",
-    attributes: {
-      type: "button",
-      "aria-label": `复制第 ${index + 1} 条剪贴板内容`
-    },
-    dataset: {
-      action: "clipboard-copy",
-      clipboardId: item.id
-    }
-  });
-  const copy = createElement("span", { className: "clipboard-row-copy" });
-  copy.append(
-    createElement("strong", { text: item.preview || item.text }),
-    createElement("small", { text: formatClipboardTime(item.copiedAt) })
-  );
-  row.append(
-    createElement("span", {
-      className: "clipboard-row-icon",
-      attributes: { "aria-hidden": "true" }
-    }),
-    copy
-  );
-  return row;
-}
-
 function renderTemplate() {
   app.replaceChildren();
 
@@ -1326,193 +1080,8 @@ function renderTemplate() {
   lyricsPanel.append(lyricsList);
   expandedLayer.append(mediaPanel, lyricsPanel);
 
-  const settingsLayer = createElement("main", {
-    className: "island-layer settings-layer",
-    attributes: { "aria-label": "设置" }
-  });
+  const settingsLayer = buildSettingsLayer();
 
-  // ——— 设置中心（hub）：标题 + 三个二级页导航 ———
-  const settingsHub = createElement("section", {
-    className: "settings-hub",
-    attributes: { "data-settings-view": "hub", "aria-label": "设置" }
-  });
-  const hubHeader = createElement("header", { className: "settings-header" });
-  hubHeader.append(createElement("div", { className: "settings-title", text: "设置" }));
-  const hubNav = createElement("div", {
-    className: "settings-nav",
-    attributes: { role: "list" }
-  });
-  SETTINGS_NAV_ITEMS.forEach((item) => {
-    const row = createElement("button", {
-      className: "settings-nav-item",
-      attributes: { type: "button", role: "listitem", "aria-label": item.label },
-      dataset: { action: "settings-nav", page: item.page }
-    });
-    const copy = createElement("span", { className: "settings-nav-copy" });
-    copy.append(
-      createElement("strong", { text: item.label }),
-      createElement("small", { text: item.hint })
-    );
-    const chevron = createElement("span", {
-      className: "settings-nav-chevron",
-      attributes: { "aria-hidden": "true" }
-    });
-    chevron.append(createIcon("chevron-right", ""));
-    row.append(copy, chevron);
-    hubNav.append(row);
-  });
-  settingsHub.append(hubHeader, hubNav);
-
-  // 二级页统一的返回标题栏构造器。
-  const buildSubHeader = (title: string) => {
-    const header = createElement("header", { className: "settings-header settings-sub-header" });
-    const back = createElement("button", {
-      className: "settings-back",
-      attributes: { type: "button", "aria-label": "返回设置" },
-      dataset: { action: "settings-back" }
-    });
-    back.append(createIcon("chevron-left", "返回"));
-    header.append(back, createElement("div", { className: "settings-title", text: title }));
-    return header;
-  };
-
-  // ——— 二级页：外观（玻璃风格 + 强度） ———
-  const appearancePage = createElement("section", {
-    className: "settings-page settings-page-appearance",
-    attributes: { "data-settings-view": "appearance", "aria-label": "外观设置" }
-  });
-  const settingsOptions = createElement("div", {
-    className: "settings-options",
-    attributes: { role: "radiogroup", "aria-label": "玻璃风格" }
-  });
-  GLASS_STYLE_OPTIONS.forEach((option) => {
-    const card = createElement("button", {
-      className: "settings-option",
-      attributes: {
-        type: "button",
-        role: "radio",
-        "aria-checked": "false",
-        "aria-label": option.label
-      },
-      dataset: {
-        action: "set-glass",
-        glass: option.id
-      }
-    });
-    const preview = createElement("span", {
-      className: `settings-option-preview glass-preview-${option.id}`,
-      attributes: { "aria-hidden": "true" }
-    });
-    const copy = createElement("span", { className: "settings-option-copy" });
-    copy.append(
-      createElement("strong", { text: option.label }),
-      createElement("small", { text: option.hint })
-    );
-    card.append(preview, copy);
-    settingsOptions.append(card);
-  });
-
-  const intensityRow = createElement("div", {
-    className: "settings-intensity",
-    attributes: { role: "radiogroup", "aria-label": "玻璃强度" }
-  });
-  GLASS_INTENSITY_OPTIONS.forEach((option) => {
-    intensityRow.append(
-      createElement("button", {
-        className: "settings-intensity-option",
-        text: option.label,
-        attributes: {
-          type: "button",
-          role: "radio",
-          "aria-checked": "false",
-          "aria-label": `玻璃强度：${option.label}`
-        },
-        dataset: {
-          action: "set-intensity",
-          intensity: option.id
-        }
-      })
-    );
-  });
-
-  const intensityLabel = createElement("div", {
-    className: "settings-section-label",
-    text: "强度"
-  });
-  appearancePage.append(buildSubHeader("外观"), settingsOptions, intensityLabel, intensityRow);
-
-  // ——— 二级页：布局（胶囊呈现方式） ———
-  const layoutPage = createElement("section", {
-    className: "settings-page settings-page-layout",
-    attributes: { "data-settings-view": "layout", "aria-label": "布局设置" }
-  });
-  const layoutOptions = createElement("div", {
-    className: "settings-options settings-options-layout",
-    attributes: { role: "radiogroup", "aria-label": "胶囊布局" }
-  });
-  LAYOUT_OPTIONS.forEach((option) => {
-    const card = createElement("button", {
-      className: "settings-option",
-      attributes: {
-        type: "button",
-        role: "radio",
-        "aria-checked": "false",
-        "aria-label": option.label
-      },
-      dataset: {
-        action: "set-layout",
-        layout: option.id
-      }
-    });
-    const preview = createElement("span", {
-      className: `settings-option-preview layout-preview-${option.id}`,
-      attributes: { "aria-hidden": "true" }
-    });
-    const copy = createElement("span", { className: "settings-option-copy" });
-    copy.append(
-      createElement("strong", { text: option.label }),
-      createElement("small", { text: option.hint })
-    );
-    card.append(preview, copy);
-    layoutOptions.append(card);
-  });
-  layoutPage.append(buildSubHeader("布局"), layoutOptions);
-
-  // ——— 二级页：系统监控（全局开关） ———
-  const monitorPage = createElement("section", {
-    className: "settings-page settings-page-monitor",
-    attributes: { "data-settings-view": "monitor", "aria-label": "系统监控设置" }
-  });
-  const monitorToggle = createElement("button", {
-    className: "settings-toggle",
-    attributes: {
-      type: "button",
-      role: "switch",
-      "aria-checked": "false",
-      "aria-label": "系统监控"
-    },
-    dataset: { action: "toggle-system-monitor" }
-  });
-  const monitorToggleCopy = createElement("span", { className: "settings-toggle-copy" });
-  monitorToggleCopy.append(
-    createElement("strong", { text: "系统监控" }),
-    createElement("small", { text: "显示 CPU / 内存 / GPU / 磁盘 读数" })
-  );
-  const monitorToggleTrack = createElement("span", {
-    className: "settings-toggle-track",
-    attributes: { "aria-hidden": "true" }
-  });
-  monitorToggleTrack.append(createElement("span", { className: "settings-toggle-thumb" }));
-  monitorToggle.append(monitorToggleCopy, monitorToggleTrack);
-  const monitorHint = createElement("p", {
-    className: "settings-toggle-hint",
-    text: "关闭后，经典布局右下角的监控胶囊与顶部居中的系统卡片都会隐藏。"
-  });
-  monitorPage.append(buildSubHeader("系统监控"), monitorToggle, monitorHint);
-
-  settingsLayer.append(settingsHub, appearancePage, layoutPage, monitorPage);
-
-  // 顶部居中布局下，系统监控以独立卡片态嵌入主胶囊。
   const systemCardLayer = buildSystemCard();
   systemCardLayer.classList.add("island-layer");
   // 静息态（无音乐/权限/剪贴板）时，胶囊常驻系统紧凑读数，点击展开到系统卡。
@@ -1896,7 +1465,7 @@ function syncClipboardSurface() {
   if (clipboardListRenderKey !== clipboardListNextKey) {
     clipboardListRenderKey = clipboardListNextKey;
     clipboardList.replaceChildren(
-      ...visibleClipboardItems.map((item, index) => createClipboardRow(item, index + (acceptedItem ? 1 : 0)))
+      ...visibleClipboardItems.map((item, index) => createClipboardRow(item, index + (acceptedItem ? 1 : 0), formatClipboardTime))
     );
 
     if (!visibleClipboardItems.length && !clipboardAccepting && !acceptedReady) {
@@ -1929,11 +1498,11 @@ function prewarmExpandedLayer() {
 }
 
 function isTransparentIdleMode(nextMode: IslandMode) {
-  return (nextMode === "idle" || nextMode === "peek") && !systemMediaActive && !mediaEntering && !mediaExiting;
+  return isTransparentIdleModeFromController(nextMode);
 }
 
 function isCapsuleMode(nextMode: IslandMode) {
-  return nextMode === "idle" || nextMode === "peek" || nextMode === "clipboard-prompt" || nextMode === "privacy";
+  return isCapsuleModeFromController(nextMode);
 }
 
 function commitModeChange(previousMode: IslandMode, resolvedMode: IslandMode, resizeAfterCommit: boolean) {
