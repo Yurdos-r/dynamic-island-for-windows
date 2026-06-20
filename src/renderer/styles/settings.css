@@ -21,10 +21,10 @@
     transform 240ms var(--transition-peak);
 }
 
-#app[data-settings-page="hub"] .settings-hub,
-#app[data-settings-page="appearance"] .settings-page-appearance,
-#app[data-settings-page="layout"] .settings-page-layout,
-#app[data-settings-page="monitor"] .settings-page-monitor {
+#app[data-mode="settings"][data-settings-page="hub"] .settings-hub,
+#app[data-mode="settings"][data-settings-page="appearance"] .settings-page-appearance,
+#app[data-mode="settings"][data-settings-page="layout"] .settings-page-layout,
+#app[data-mode="settings"][data-settings-page="monitor"] .settings-page-monitor {
   opacity: 1;
   pointer-events: auto;
   transform: translate3d(0, 0, 0);

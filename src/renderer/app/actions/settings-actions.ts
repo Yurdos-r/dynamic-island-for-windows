@@ -166,7 +166,6 @@ export function createSettingsActions(options: SettingsActionsOptions) {
       return;
     }
 
-    runtime.suppressNextClick = true;
     setMode("system");
   }
 

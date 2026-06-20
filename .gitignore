@@ -4,6 +4,9 @@ node_modules/
 # 构建产物
 dist/
 
+# 模块化重构的本地备份快照（体积大，不入库）
+modularization-backups/
+
 # 运行时临时目录与缓存（.tmp 含用户数据/解包产物，体积大）
 .tmp/
 .omc/

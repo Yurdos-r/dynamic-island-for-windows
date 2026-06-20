@@ -1,5 +1,5 @@
 # Taskbar width probe (read-only, changes nothing).
-# Run:  powershell -ExecutionPolicy Bypass -File .\probe-taskbar.ps1
+# Run:  powershell -ExecutionPolicy Bypass -File .\scripts\probe-taskbar.ps1
 # Run it twice: once with few taskbar icons, once with many, compare the numbers.
 
 Add-Type @"
