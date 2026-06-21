@@ -16,7 +16,7 @@ A Windows-first Dynamic Island prototype built with Electron and Vite. It create
 - System monitor capsule for CPU, memory, GPU, disk, and uptime data.
 - Settings for glass style, layout, system monitor visibility, and Windows login auto-start.
 - Tray menu for showing the island, switching states, and quitting the app.
-- Portable Windows x64 `.exe` build with bundled renderer assets and native PowerShell helpers.
+- Windows x64 installer and portable `.exe` builds with bundled renderer assets and native PowerShell helpers.
 
 ## Run From Source
 
@@ -33,13 +33,25 @@ For a local production-style run without the Vite dev server:
 npm start
 ```
 
-## Build Portable EXE
+## Build Windows Packages
 
 ```bash
+npm run dist:win
+```
+
+`npm run dist:win` builds both release formats:
+
+- Installer: `release/Dynamic Island for Windows Setup 0.1.0.exe`
+- Portable: `release/Dynamic Island for Windows 0.1.0.exe`
+
+You can also build a single format:
+
+```bash
+npm run dist:installer
 npm run dist:portable
 ```
 
-The portable Windows x64 executable is written to `release/`. The generated file is intended for GitHub Releases, not for committing to the repository.
+Generated packages are intended for GitHub Releases, not for committing to the repository.
 
 Packaged runs use Electron's normal user data directory. Startup logs are written to:
 
@@ -55,9 +67,10 @@ Development runs store user data under:
 
 ## GitHub Release Notes
 
-- Upload `release/Dynamic Island for Windows 0.1.0.exe` as a Release asset.
-- The current portable build is unsigned, so Windows or security software may show a warning on first launch.
-- There is no installer, auto-update flow, or code signing yet.
+- Upload `release/Dynamic Island for Windows Setup 0.1.0.exe` as the recommended installer.
+- Upload `release/Dynamic Island for Windows 0.1.0.exe` as the portable alternative.
+- The current builds are unsigned, so Windows or security software may show a warning on first launch.
+- There is no auto-update flow or code signing yet.
 
 ## Privacy
 
@@ -98,7 +111,7 @@ The repository intentionally excludes local dependencies, generated builds, runt
 - Focus timer and quick actions.
 - Notification capture or app event adapters.
 - Per-monitor positioning and user-configurable screen edge placement.
-- Installer, code signing, and update workflow.
+- Code signing and update workflow.
 
 ## License
 

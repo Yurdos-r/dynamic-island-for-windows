@@ -18,6 +18,8 @@
     "start": "npm run build && electron . --software-rendering",
     "build": "tsc --noEmit && vite build",
     "dist:portable": "npm run build && electron-builder --win portable",
+    "dist:installer": "npm run build && electron-builder --win nsis",
+    "dist:win": "npm run build && electron-builder --win",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
@@ -65,8 +67,23 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
         }
       ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Dynamic Island for Windows",
+      "artifactName": "Dynamic Island for Windows Setup ${version}.${ext}"
     }
   }
 }
