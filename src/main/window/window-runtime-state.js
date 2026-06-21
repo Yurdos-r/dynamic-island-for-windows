@@ -21,7 +21,7 @@ function createWindowRuntimeState(options = {}) {
     systemStageWidth: initialStageWidth,
     taskbarIconLeft: 0,
     taskbarVisible: true,
-    layout: validLayouts.has(initialUiSettings.layout) ? initialUiSettings.layout : "classic",
+    layout: validLayouts.has(initialUiSettings.layout) ? initialUiSettings.layout : "top-center",
     systemMonitorEnabled: initialUiSettings.systemMonitorEnabled !== false
   };
 }

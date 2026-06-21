@@ -3,23 +3,70 @@
   "version": "0.1.0",
   "description": "A Windows-first Dynamic Island prototype inspired by Ripple.",
   "main": "src/main/main.js",
-  "author": "",
+  "author": "Open Tools",
   "license": "MIT",
+  "homepage": "https://github.com/Yurdos-r/dynamic-island-for-windows#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yurdos-r/dynamic-island-for-windows.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Yurdos-r/dynamic-island-for-windows/issues"
+  },
   "scripts": {
-    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on tcp:5173 && electron . --dev-server=http://127.0.0.1:5173\"",
-    "start": "npm run build && electron .",
+    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on tcp:5173 && electron . --dev-server=http://127.0.0.1:5173 --software-rendering\"",
+    "start": "npm run build && electron . --software-rendering",
     "build": "tsc --noEmit && vite build",
+    "dist:portable": "npm run build && electron-builder --win portable",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
+    "koffi": "^3.0.2",
     "lucide": "^1.18.0"
   },
   "devDependencies": {
     "@types/node": "^25.9.3",
     "concurrently": "^10.0.3",
     "electron": "^42.4.0",
+    "electron-builder": "^26.15.3",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
     "wait-on": "^9.0.10"
+  },
+  "build": {
+    "productName": "Dynamic Island for Windows",
+    "appId": "com.open-tools.dynamic-island-for-windows",
+    "electronDist": "node_modules/electron/dist",
+    "electronVersion": "42.4.0",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "assets/**/*",
+      "dist/**/*",
+      "src/main/**/*",
+      "src/shared/**/*",
+      "package.json",
+      "LICENSE",
+      "README.md"
+    ],
+    "icon": "assets/app-icon.png",
+    "asar": true,
+    "asarUnpack": [
+      "src/main/**/*.ps1",
+      "node_modules/koffi/**/*"
+    ],
+    "win": {
+      "icon": "assets/app-icon.ico",
+      "signExecutable": false,
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
   }
 }

@@ -49,7 +49,7 @@ function createWindowCreationController(options = {}) {
       preloadPath
     });
 
-    configureIslandBrowserWindow(state.mainWindow);
+    configureIslandBrowserWindow(state.mainWindow, { opaqueWindow });
     updateNativeHitShape();
     setMousePassthrough(true);
 
@@ -117,7 +117,7 @@ function createWindowCreationController(options = {}) {
       preloadPath
     });
 
-    configureIslandBrowserWindow(state.systemWindow);
+    configureIslandBrowserWindow(state.systemWindow, { opaqueWindow });
     updateSystemNativeHitShape();
     setSystemMousePassthrough(true);
 

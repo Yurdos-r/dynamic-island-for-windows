@@ -1,5 +1,5 @@
 const os = require("node:os");
-const { runPowerShellJson: defaultRunPowerShellJson } = require("./commands");
+const { createNativeSystemProbe } = require("./native-system");
 
 const SYSTEM_MONITOR_INTERVAL_MS = 1000;
 const DISK_REFRESH_INTERVAL_MS = 5000;
@@ -65,70 +65,6 @@ function normalizeDiskItems(rawItems) {
     .slice(0, 4);
 }
 
-async function queryDiskSnapshot(runPowerShellJson) {
-  if (process.platform !== "win32") {
-    return [];
-  }
-
-  const result = await runPowerShellJson(
-    `
-$ErrorActionPreference = "SilentlyContinue"
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$OutputEncoding = [System.Text.Encoding]::UTF8
-
-Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" |
-  Sort-Object DeviceID |
-  Select-Object @{Name="name";Expression={$_.DeviceID}}, @{Name="label";Expression={$_.VolumeName}}, @{Name="size";Expression={[Int64]$_.Size}}, @{Name="free";Expression={[Int64]$_.FreeSpace}} |
-  ConvertTo-Json -Compress
-`,
-    { timeout: 2500, maxBuffer: 128 * 1024 }
-  );
-
-  return normalizeDiskItems(result);
-}
-
-async function queryGpuPercent(runPowerShellJson) {
-  if (process.platform !== "win32") {
-    return 0;
-  }
-
-  const result = await runPowerShellJson(
-    `
-$ErrorActionPreference = "SilentlyContinue"
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$OutputEncoding = [System.Text.Encoding]::UTF8
-
-$sum = 0
-try {
-  $items = Get-CimInstance -ClassName Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine -ErrorAction Stop
-  $sum = ($items |
-    Where-Object { $_.Name -match "engtype_" } |
-    Measure-Object -Property UtilizationPercentage -Sum).Sum
-} catch {
-  try {
-    $counter = Get-Counter "\\GPU Engine(*)\\Utilization Percentage" -ErrorAction Stop
-    $sum = ($counter.CounterSamples |
-      Where-Object { $_.InstanceName -match "engtype_" } |
-      Measure-Object -Property CookedValue -Sum).Sum
-  } catch {
-    $sum = 0
-  }
-}
-
-if ($null -eq $sum) {
-  $sum = 0
-}
-
-@{
-  gpuPercent = [Math]::Min(100, [Math]::Max(0, [Math]::Round([Double]$sum)))
-} | ConvertTo-Json -Compress
-`,
-    { timeout: 2200, maxBuffer: 128 * 1024 }
-  );
-
-  return Math.max(0, Math.min(100, Math.round(Number(result?.gpuPercent || 0))));
-}
-
 function getStateFromPressure(value) {
   if (value >= 90) {
     return "critical";
@@ -144,17 +80,20 @@ function getStateFromPressure(value) {
 function createSystemMonitor(options = {}) {
   const logStartup = typeof options.logStartup === "function" ? options.logStartup : () => {};
   const emitSnapshot = typeof options.emitSnapshot === "function" ? options.emitSnapshot : () => {};
-  const runPowerShellJson = options.runPowerShellJson || defaultRunPowerShellJson;
+  const probe =
+    options.probe ||
+    createNativeSystemProbe({
+      logStartup,
+      gpuInterval: GPU_REFRESH_INTERVAL_MS,
+      diskInterval: DISK_REFRESH_INTERVAL_MS
+    });
   let timer;
   let previousCpuSample = readCpuSample();
-  let diskItems = [];
-  let lastDiskRefresh = 0;
-  let gpuPercent = 0;
-  let lastGpuRefresh = 0;
+  const coreCount = os.cpus().length;
   let pollInFlight = false;
   let lastPayload = "";
 
-  async function poll() {
+  function poll() {
     if (pollInFlight) {
       return;
     }
@@ -171,15 +110,8 @@ function createSystemMonitor(options = {}) {
       const usedMemory = Math.max(0, totalMemory - freeMemory);
       const memoryPercent = totalMemory > 0 ? Math.round((usedMemory / totalMemory) * 100) : 0;
 
-      if (!lastDiskRefresh || Date.now() - lastDiskRefresh >= DISK_REFRESH_INTERVAL_MS) {
-        lastDiskRefresh = Date.now();
-        diskItems = await queryDiskSnapshot(runPowerShellJson);
-      }
-
-      if (!lastGpuRefresh || Date.now() - lastGpuRefresh >= GPU_REFRESH_INTERVAL_MS) {
-        lastGpuRefresh = Date.now();
-        gpuPercent = await queryGpuPercent(runPowerShellJson);
-      }
+      const diskItems = normalizeDiskItems(probe.getDiskItems());
+      const gpuPercent = Math.max(0, Math.min(100, Math.round(Number(probe.getGpuPercent()) || 0)));
 
       const primaryDisk = diskItems[0];
       const diskPercent = primaryDisk?.usedPercent || 0;
@@ -194,7 +126,7 @@ function createSystemMonitor(options = {}) {
         diskPercent,
         disks: diskItems,
         uptimeSeconds: Math.max(0, Math.round(os.uptime())),
-        coreCount: os.cpus().length,
+        coreCount,
         state: getStateFromPressure(pressure),
         updatedAt: Date.now()
       };
@@ -216,7 +148,7 @@ function createSystemMonitor(options = {}) {
         diskPercent: 0,
         disks: [],
         uptimeSeconds: 0,
-        coreCount: os.cpus().length,
+        coreCount,
         state: "unknown",
         updatedAt: Date.now()
       });
@@ -230,10 +162,9 @@ function createSystemMonitor(options = {}) {
       return;
     }
 
-    void poll();
-    timer = setInterval(() => {
-      void poll();
-    }, SYSTEM_MONITOR_INTERVAL_MS);
+    probe.start();
+    poll();
+    timer = setInterval(poll, SYSTEM_MONITOR_INTERVAL_MS);
   }
 
   function stop() {
@@ -241,6 +172,8 @@ function createSystemMonitor(options = {}) {
       clearInterval(timer);
       timer = undefined;
     }
+
+    probe.stop();
   }
 
   return {

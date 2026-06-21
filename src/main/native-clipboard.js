@@ -1,8 +1,8 @@
-const path = require("node:path");
 const { spawn } = require("node:child_process");
 const readline = require("node:readline");
+const { getNativeHelperPath } = require("./app-paths");
 
-const HELPER_SCRIPT_PATH = path.join(__dirname, "native-clipboard-helper.ps1");
+const HELPER_SCRIPT_NAME = "native-clipboard-helper.ps1";
 const READY_TIMEOUT_MS = 1800;
 
 function createNativeClipboardListener(options = {}) {
@@ -11,6 +11,7 @@ function createNativeClipboardListener(options = {}) {
   const onReady = typeof options.onReady === "function" ? options.onReady : () => {};
   const onUnavailable = typeof options.onUnavailable === "function" ? options.onUnavailable : () => {};
   const platform = options.platform || process.platform;
+  const helperScriptPath = options.helperScriptPath || getNativeHelperPath(HELPER_SCRIPT_NAME);
   let child;
   let lineReader;
   let readyTimer;
@@ -81,7 +82,7 @@ function createNativeClipboardListener(options = {}) {
 
     child = spawn(
       "powershell.exe",
-      ["-NoProfile", "-Sta", "-ExecutionPolicy", "Bypass", "-File", HELPER_SCRIPT_PATH],
+      ["-NoProfile", "-Sta", "-ExecutionPolicy", "Bypass", "-File", helperScriptPath],
       {
         windowsHide: true,
         stdio: ["ignore", "pipe", "pipe"]

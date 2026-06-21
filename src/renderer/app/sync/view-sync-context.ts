@@ -26,6 +26,7 @@ export interface ViewSyncContext {
   settingsPage: SettingsPage;
   layout: IslandLayout;
   systemMonitorEnabled: boolean;
+  startupEnabled: boolean;
   systemSnapshot: SystemSnapshot;
   privacyExpanded: boolean;
   clipboardSnapshot: ClipboardSnapshot;

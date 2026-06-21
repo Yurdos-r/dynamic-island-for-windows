@@ -10,7 +10,7 @@ function registerIslandIpcHandlers(options = {}) {
   const assertMainFrameSender = options.assertMainFrameSender || (() => false);
   const assertSystemFrameSender = options.assertSystemFrameSender || (() => false);
   const getCurrentMode = options.getCurrentMode || (() => "idle");
-  const getUiSettings = options.getUiSettings || (() => ({ layout: "classic", systemMonitorEnabled: true }));
+  const getUiSettings = options.getUiSettings || (() => ({ layout: "top-center", systemMonitorEnabled: true, startupEnabled: false }));
   const onMainRendererReady = options.onMainRendererReady || (() => {});
   const onSystemRendererReady = options.onSystemRendererReady || (() => {});
 
@@ -55,6 +55,14 @@ function registerIslandIpcHandlers(options = {}) {
     }
 
     return options.applySystemMonitorEnabled?.(enabled);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.setStartup, (event, enabled) => {
+    if (!assertMainFrameSender(event)) {
+      return getUiSettings().startupEnabled;
+    }
+
+    return options.applyStartupEnabled?.(enabled);
   });
 
   ipcMain.handle(IPC_CHANNELS.setInteracting, (event, interacting) => {

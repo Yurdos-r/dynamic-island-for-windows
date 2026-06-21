@@ -78,6 +78,8 @@ export function createViewSyncContext(options: ViewSyncContextOptions): ViewSync
     set layout(value: IslandLayout) { runtime.layout = value; },
     get systemMonitorEnabled() { return runtime.systemMonitorEnabled; },
     set systemMonitorEnabled(value: boolean) { runtime.systemMonitorEnabled = value; },
+    get startupEnabled() { return runtime.startupEnabled; },
+    set startupEnabled(value: boolean) { runtime.startupEnabled = value; },
     get systemSnapshot() { return runtime.systemSnapshot; },
     set systemSnapshot(value: SystemSnapshot) { runtime.systemSnapshot = value; },
     get privacyExpanded() { return runtime.privacyExpanded; },
@@ -107,6 +109,7 @@ interface RendererEventActions {
   isLayout(value: unknown): value is IslandLayout;
   setLayout(layout: IslandLayout): void;
   setSystemMonitorEnabled(enabled: boolean): void;
+  setStartupEnabled(enabled: boolean): void;
   closeSettings(): void;
   closeSystemCard(): void;
   togglePrivacyDetail(): void;
@@ -165,6 +168,8 @@ export function createRendererEventContext(options: RendererEventContextOptions)
     set settingsPage(value: SettingsPage) { runtime.settingsPage = value; },
     get systemMonitorEnabled() { return runtime.systemMonitorEnabled; },
     set systemMonitorEnabled(value: boolean) { runtime.systemMonitorEnabled = value; },
+    get startupEnabled() { return runtime.startupEnabled; },
+    set startupEnabled(value: boolean) { runtime.startupEnabled = value; },
     get privacyState() { return runtime.privacyState; },
     set privacyState(value: PrivacySnapshot) { runtime.privacyState = value; },
     get systemMediaActive() { return runtime.systemMediaActive; },

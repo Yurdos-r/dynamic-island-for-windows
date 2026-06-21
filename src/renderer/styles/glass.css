@@ -46,7 +46,7 @@
 #app[data-glass="liquid-css"] .island-shell {
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.04) 40%, rgba(255, 255, 255, 0.1)),
-    rgba(15, 23, 42, 0.28);
+    rgba(15, 23, 42, var(--glass-tint-alpha));
   border-color: rgba(255, 255, 255, 0.18);
   box-shadow:
     0 14px 40px rgba(0, 0, 0, 0.3),
@@ -80,7 +80,7 @@
 #app[data-glass="liquid-svg"] .island-shell {
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02) 45%, rgba(255, 255, 255, 0.08)),
-    rgba(15, 23, 42, 0.18);
+    rgba(15, 23, 42, calc(var(--glass-tint-alpha) * 0.62));
   border-color: rgba(255, 255, 255, 0.22);
   box-shadow:
     0 14px 40px rgba(0, 0, 0, 0.32),

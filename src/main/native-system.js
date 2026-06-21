@@ -2,24 +2,29 @@ const { spawn } = require("node:child_process");
 const readline = require("node:readline");
 const { getNativeHelperPath } = require("./app-paths");
 
-const HELPER_SCRIPT_NAME = "native-taskbar-helper.ps1";
-const SNAPSHOT_MAX_AGE_MS = 4000;
+const HELPER_SCRIPT_NAME = "native-system-helper.ps1";
 const RESTART_DELAY_MS = 1500;
+const GPU_REFRESH_INTERVAL_MS = 1500;
+const DISK_REFRESH_INTERVAL_MS = 5000;
 
-// Watches the centered taskbar icon area (ReBarWindow32). When it grows toward
-// the bottom-left capsule, the main process uses leftEdge to shrink the stage.
-function createNativeTaskbarWatch(options = {}) {
+// Resident PowerShell process that supplies the two Windows-specific system
+// metrics (GPU utilization, fixed-drive sizes). Replaces the per-tick
+// `runPowerShellJson` cold starts in system-monitor.js: one long-lived process,
+// stdout JSON lines, auto-restart on crash. CPU/memory stay on Node `os`.
+// On non-Windows the helper never starts and the getters return inert values.
+function createNativeSystemProbe(options = {}) {
   const logStartup = typeof options.logStartup === "function" ? options.logStartup : () => {};
   const platform = options.platform || process.platform;
-  const pollInterval = Number.isFinite(options.pollInterval) ? options.pollInterval : 400;
-  const onUpdate = typeof options.onUpdate === "function" ? options.onUpdate : () => {};
+  const gpuInterval = Number.isFinite(options.gpuInterval) ? options.gpuInterval : GPU_REFRESH_INTERVAL_MS;
+  const diskInterval = Number.isFinite(options.diskInterval) ? options.diskInterval : DISK_REFRESH_INTERVAL_MS;
   const helperScriptPath = options.helperScriptPath || getNativeHelperPath(HELPER_SCRIPT_NAME);
   let child;
   let lineReader;
   let restartTimer;
   let stopped = false;
   let ready = false;
-  let lastSnapshot;
+  let gpuPercent = 0;
+  let diskItems = [];
 
   function clearRestartTimer() {
     if (restartTimer) {
@@ -38,35 +43,26 @@ function createNativeTaskbarWatch(options = {}) {
     try {
       payload = JSON.parse(text);
     } catch {
-      logStartup("native-taskbar-parse-error", text.slice(0, 180));
+      logStartup("native-system-parse-error", text.slice(0, 180));
       return;
     }
 
     if (payload.type === "status") {
       ready = payload.status === "ready";
-      logStartup("native-taskbar-status", { status: payload.status || "" });
+      logStartup("native-system-status", { status: payload.status || "" });
       return;
     }
 
-    if (payload.type === "taskbar") {
-      // Taskbar is treated as visible unless the helper explicitly says otherwise,
-      // so a missing/garbled flag never strands the capsules in a hidden state.
-      const visible = payload.visible !== false;
-      if (payload.available === false) {
-        lastSnapshot = { available: false, visible, updatedAt: Date.now() };
-      } else {
-        lastSnapshot = {
-          available: true,
-          left: Number(payload.left),
-          right: Number(payload.right),
-          top: Number(payload.top),
-          bottom: Number(payload.bottom),
-          width: Number(payload.width),
-          visible,
-          updatedAt: Date.now()
-        };
-      }
-      onUpdate(getSnapshot());
+    if (payload.type === "gpu") {
+      gpuPercent = Math.max(0, Math.min(100, Math.round(Number(payload.gpuPercent) || 0)));
+      return;
+    }
+
+    if (payload.type === "disk") {
+      // PowerShell collapses a single-element array to a bare object in JSON;
+      // coerce back to an array so the normalizer always sees a list.
+      const raw = payload.disks;
+      diskItems = Array.isArray(raw) ? raw : raw ? [raw] : [];
     }
   }
 
@@ -75,7 +71,7 @@ function createNativeTaskbarWatch(options = {}) {
       return;
     }
 
-    logStartup("native-taskbar-restart", { reason, ...details });
+    logStartup("native-system-restart", { reason, ...details });
     restartTimer = setTimeout(() => {
       restartTimer = undefined;
       start();
@@ -104,8 +100,10 @@ function createNativeTaskbarWatch(options = {}) {
         "Bypass",
         "-File",
         helperScriptPath,
-        "-PollIntervalMs",
-        String(Math.max(150, Math.round(pollInterval)))
+        "-GpuIntervalMs",
+        String(Math.max(400, Math.round(gpuInterval))),
+        "-DiskIntervalMs",
+        String(Math.max(1000, Math.round(diskInterval)))
       ],
       {
         windowsHide: true,
@@ -123,12 +121,12 @@ function createNativeTaskbarWatch(options = {}) {
     child.stderr?.on("data", (chunk) => {
       const message = String(chunk || "").trim();
       if (message) {
-        logStartup("native-taskbar-stderr", message.slice(0, 300));
+        logStartup("native-system-stderr", message.slice(0, 300));
       }
     });
 
     child.on("error", (error) => {
-      logStartup("native-taskbar-spawn-error", error?.message || String(error));
+      logStartup("native-system-spawn-error", error?.message || String(error));
     });
 
     child.on("exit", (code, signal) => {
@@ -159,19 +157,11 @@ function createNativeTaskbarWatch(options = {}) {
     ready = false;
   }
 
-  function getSnapshot() {
-    if (!lastSnapshot || Date.now() - lastSnapshot.updatedAt > SNAPSHOT_MAX_AGE_MS) {
-      // Stale or missing data defaults to visible so the capsule is never stuck hidden.
-      return { available: false, visible: true, nativeReady: ready };
-    }
-
-    return { ...lastSnapshot, nativeReady: ready };
-  }
-
   return {
     start,
     stop,
-    getSnapshot,
+    getGpuPercent: () => gpuPercent,
+    getDiskItems: () => diskItems,
     get ready() {
       return ready;
     }
@@ -179,5 +169,5 @@ function createNativeTaskbarWatch(options = {}) {
 }
 
 module.exports = {
-  createNativeTaskbarWatch
+  createNativeSystemProbe
 };

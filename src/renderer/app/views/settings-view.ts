@@ -159,10 +159,10 @@ export function buildSettingsLayer() {
   });
   layoutPage.append(buildSubHeader("布局"), layoutOptions);
 
-  // ——— 二级页：系统监控（全局开关） ———
+  // ——— 二级页：系统（监控 + 启动项） ———
   const monitorPage = createElement("section", {
     className: "settings-page settings-page-monitor",
-    attributes: { "data-settings-view": "monitor", "aria-label": "系统监控设置" }
+    attributes: { "data-settings-view": "monitor", "aria-label": "系统设置" }
   });
   const monitorToggle = createElement("button", {
     className: "settings-toggle",
@@ -189,7 +189,28 @@ export function buildSettingsLayer() {
     className: "settings-toggle-hint",
     text: "关闭后，经典布局右下角的监控胶囊与顶部居中的系统卡片都会隐藏。"
   });
-  monitorPage.append(buildSubHeader("系统监控"), monitorToggle, monitorHint);
+  const startupToggle = createElement("button", {
+    className: "settings-toggle",
+    attributes: {
+      type: "button",
+      role: "switch",
+      "aria-checked": "false",
+      "aria-label": "开机自启动"
+    },
+    dataset: { action: "toggle-startup" }
+  });
+  const startupToggleCopy = createElement("span", { className: "settings-toggle-copy" });
+  startupToggleCopy.append(
+    createElement("strong", { text: "开机自启动" }),
+    createElement("small", { text: "登录 Windows 后自动启动动态岛" })
+  );
+  const startupToggleTrack = createElement("span", {
+    className: "settings-toggle-track",
+    attributes: { "aria-hidden": "true" }
+  });
+  startupToggleTrack.append(createElement("span", { className: "settings-toggle-thumb" }));
+  startupToggle.append(startupToggleCopy, startupToggleTrack);
+  monitorPage.append(buildSubHeader("系统"), monitorToggle, startupToggle, monitorHint);
 
   settingsLayer.append(settingsHub, appearancePage, layoutPage, monitorPage);
 

@@ -71,14 +71,14 @@ export const GLASS_INTENSITY_DISPLACE_SCALE: Record<GlassIntensity, number> = {
 export const SETTINGS_LONG_PRESS_MS = 550;
 // 布局选项：经典（左下主胶囊 + 右下系统监控）/ 顶部居中（单胶囊，系统监控并入）。
 export const LAYOUT_OPTIONS: ReadonlyArray<{ id: IslandLayout; label: string; hint: string }> = [
-  { id: "classic", label: "经典", hint: "左下胶囊 · 右下系统监控" },
-  { id: "top-center", label: "顶部居中", hint: "屏幕顶部单胶囊" }
+  { id: "top-center", label: "顶部居中", hint: "屏幕顶部单胶囊" },
+  { id: "classic", label: "经典", hint: "左下胶囊 · 右下系统监控" }
 ];
 // 设置中心导航项 → 对应二级页。
 export const SETTINGS_NAV_ITEMS: ReadonlyArray<{ page: "appearance" | "layout" | "monitor"; label: string; hint: string }> = [
   { page: "appearance", label: "外观", hint: "玻璃质感与强度" },
   { page: "layout", label: "布局", hint: "胶囊位置与呈现" },
-  { page: "monitor", label: "系统监控", hint: "显示或隐藏系统监控" }
+  { page: "monitor", label: "系统", hint: "系统监控与自启动" }
 ];
 export const PRIVACY_PRIORITY_TRANSITION_MS = 720;
 export const PRIVACY_PRIORITY_STAGE_SWITCH_MS = 360;
@@ -99,6 +99,7 @@ export interface AppState {
   settingsPage: SettingsPage;
   layout: IslandLayout;
   systemMonitorEnabled: boolean;
+  startupEnabled: boolean;
   track: TrackState;
   progressSeconds: number;
   lyrics: LyricLine[];

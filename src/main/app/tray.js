@@ -1,4 +1,5 @@
 const { app, Menu, Tray, nativeImage } = require("electron");
+const { getAppAssetPath } = require("../app-paths");
 
 const DEFAULT_ISLAND_STATE_NAMES = Object.freeze({
   capsule: "胶囊",
@@ -15,7 +16,11 @@ function createIslandTray(options = {}) {
   const requestIslandMode = typeof options.requestIslandMode === "function" ? options.requestIslandMode : () => {};
   const setQuitting = typeof options.setQuitting === "function" ? options.setQuitting : () => {};
 
-  const tray = new Tray(nativeImage.createEmpty());
+  const iconPath = options.iconPath || getAppAssetPath("app-icon.png");
+  const trayIcon = nativeImage.createFromPath(iconPath);
+  const tray = new Tray(
+    trayIcon.isEmpty() ? nativeImage.createEmpty() : trayIcon.resize({ width: 16, height: 16, quality: "best" })
+  );
   tray.setToolTip("动态岛");
   tray.setContextMenu(
     Menu.buildFromTemplate([

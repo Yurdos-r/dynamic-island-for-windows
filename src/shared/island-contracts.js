@@ -25,6 +25,7 @@ const IPC_CHANNELS = Object.freeze({
   getUiSettings: "island:get-ui-settings",
   setLayout: "island:set-layout",
   setSystemMonitor: "island:set-system-monitor",
+  setStartup: "island:set-startup",
   setInteracting: "island:set-interacting",
   setMode: "island:set-mode",
   avoidScale: "island:avoid-scale",

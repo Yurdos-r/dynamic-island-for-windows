@@ -12,6 +12,16 @@
     0 14px 40px rgba(0, 0, 0, 0.28),
     inset 0 1px 1px rgba(255, 255, 255, 0.34),
     inset 0 -1px 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(calc(var(--glass-blur) + 10px)) saturate(calc(var(--glass-saturate) * 1.22)) brightness(0.96);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 10px)) saturate(calc(var(--glass-saturate) * 1.22)) brightness(0.96);
+  transition:
+    width 480ms var(--ease-spring),
+    height 480ms var(--ease-spring),
+    border-radius 480ms var(--ease-spring),
+    transform 420ms var(--ease-spring),
+    background 180ms var(--transition-soft),
+    border-color 180ms var(--transition-soft),
+    box-shadow 180ms var(--transition-soft);
 }
 
 #app[data-role="system"][data-mode="hover"] .island-shell,
@@ -20,8 +30,6 @@
     linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.045)),
     rgba(8, 13, 22, 0.58);
   border-color: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(calc(var(--glass-blur) + 10px)) saturate(calc(var(--glass-saturate) * 1.22)) brightness(0.96);
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 10px)) saturate(calc(var(--glass-saturate) * 1.22)) brightness(0.96);
 }
 
 #app[data-role="system"][data-system-state="warn"] .island-shell {
@@ -291,15 +299,15 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
+  gap: 6px;
+  padding: 5px 8px;
   cursor: pointer;
 }
 
 .system-hover-layer .system-capsule-metric {
   grid-template-rows: auto 30px;
   gap: 5px;
-  padding: 6px 8px;
+  padding: 6px 5px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.08);
   box-shadow:
@@ -316,7 +324,7 @@
 }
 
 .system-hover-layer .system-tile-grid {
-  gap: 2px;
+  gap: 1px;
 }
 
 .system-hover-layer .system-tile {

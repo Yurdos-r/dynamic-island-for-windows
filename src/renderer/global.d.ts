@@ -11,6 +11,7 @@ declare global {
       getUiSettings: () => Promise<UiSettings>;
       setLayout: (layout: IslandLayout) => Promise<IslandLayout>;
       setSystemMonitor: (enabled: boolean) => Promise<boolean>;
+      setStartup: (enabled: boolean) => Promise<boolean>;
       writeClipboardText: (text: string) => Promise<ClipboardWriteResult>;
       acceptClipboardPending: (id: string) => Promise<ClipboardWriteResult>;
       dismissClipboardPending: (id: string) => Promise<ClipboardWriteResult>;
@@ -35,6 +36,7 @@ declare global {
   interface UiSettings {
     layout: IslandLayout;
     systemMonitorEnabled: boolean;
+    startupEnabled: boolean;
   }
 
   interface MediaControlResult {

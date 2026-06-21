@@ -1,26 +1,27 @@
-# 依赖
+# Dependencies
 node_modules/
 
-# 构建产物
+# Build output
 dist/
+release/
 
-# 模块化重构的本地备份快照（体积大，不入库）
+# Local backup snapshots
 modularization-backups/
 
-# 运行时临时目录与缓存（.tmp 含用户数据/解包产物，体积大）
+# Runtime data and local caches
 .tmp/
 .omc/
 
-# 日志
+# Logs
 *.log
 
-# 运行依赖的二进制（需另行获取，见 README）
+# Local binary runtime dependency
 betterncm.dll
 
-# 系统文件
+# System files
 .DS_Store
 Thumbs.db
 
-# 编辑器
+# Editors
 .vscode/
 .idea/

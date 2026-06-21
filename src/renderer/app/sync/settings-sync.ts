@@ -16,4 +16,7 @@ export function syncSettingsSurface(context: ViewSyncContext) {
   context.app.querySelectorAll<HTMLButtonElement>('[data-action="toggle-system-monitor"]').forEach((toggle) => {
     toggle.setAttribute("aria-checked", context.systemMonitorEnabled ? "true" : "false");
   });
+  context.app.querySelectorAll<HTMLButtonElement>('[data-action="toggle-startup"]').forEach((toggle) => {
+    toggle.setAttribute("aria-checked", context.startupEnabled ? "true" : "false");
+  });
 }

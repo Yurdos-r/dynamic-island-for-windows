@@ -10,7 +10,7 @@ function safeMediaAction(action) {
 }
 
 function safeLayout(layout) {
-  return ISLAND_LAYOUT_SET.has(layout) ? layout : "classic";
+  return ISLAND_LAYOUT_SET.has(layout) ? layout : "top-center";
 }
 
 contextBridge.exposeInMainWorld("island", {
@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld("island", {
   getUiSettings: () => ipcRenderer.invoke(IPC_CHANNELS.getUiSettings),
   setLayout: (layout) => ipcRenderer.invoke(IPC_CHANNELS.setLayout, safeLayout(layout)),
   setSystemMonitor: (enabled) => ipcRenderer.invoke(IPC_CHANNELS.setSystemMonitor, Boolean(enabled)),
+  setStartup: (enabled) => ipcRenderer.invoke(IPC_CHANNELS.setStartup, Boolean(enabled)),
   writeClipboardText: (text) => ipcRenderer.invoke(IPC_CHANNELS.clipboardWrite, typeof text === "string" ? text : ""),
   acceptClipboardPending: (id) => ipcRenderer.invoke(IPC_CHANNELS.clipboardAcceptPending, typeof id === "string" ? id : ""),
   dismissClipboardPending: (id) => ipcRenderer.invoke(IPC_CHANNELS.clipboardDismissPending, typeof id === "string" ? id : ""),

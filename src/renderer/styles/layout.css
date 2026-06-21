@@ -6,6 +6,7 @@
      backdrop-filter 缁熶竴璇昏繖涓や釜鍙橀噺锛屽己搴﹀嵆鍦ㄦ璋冭妭妯＄硦涓庨ケ鍜屻€?*/
   --glass-blur: 14px;
   --glass-saturate: 1.4;
+  --glass-tint-alpha: 0.32;
   --transition-spring: cubic-bezier(0.2, 0.85, 0.18, 1);
   --transition-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --transition-peak: cubic-bezier(0.16, 1, 0.3, 1);
@@ -110,15 +111,18 @@
 #app[data-glass-intensity="low"] {
   --glass-blur: 6px;
   --glass-saturate: 1.15;
+  --glass-tint-alpha: 0.14;
 }
 
 #app[data-glass-intensity="medium"] {
   --glass-blur: 14px;
   --glass-saturate: 1.4;
+  --glass-tint-alpha: 0.32;
 }
 
 #app[data-glass-intensity="high"] {
   --glass-blur: 26px;
   --glass-saturate: 1.85;
+  --glass-tint-alpha: 0.52;
 }
 

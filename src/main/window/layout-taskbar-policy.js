@@ -2,7 +2,7 @@ const { IPC_CHANNELS } = require("../../shared/island-contracts");
 
 function createLayoutTaskbarPolicy(options = {}) {
   const validLayouts = options.validLayouts || new Set(["classic", "top-center"]);
-  const getLayout = options.getLayout || (() => "classic");
+  const getLayout = options.getLayout || (() => "top-center");
   const setLayoutValue = options.setLayoutValue || (() => {});
   const getSystemMonitorEnabled = options.getSystemMonitorEnabled || (() => true);
   const setSystemMonitorEnabledValue = options.setSystemMonitorEnabledValue || (() => {});
@@ -88,7 +88,7 @@ function createLayoutTaskbarPolicy(options = {}) {
   }
 
   function applyLayout(next) {
-    const value = validLayouts.has(next) ? next : "classic";
+    const value = validLayouts.has(next) ? next : "top-center";
     if (value === getLayout()) {
       return getLayout();
     }

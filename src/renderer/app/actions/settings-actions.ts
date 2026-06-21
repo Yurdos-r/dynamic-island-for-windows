@@ -113,12 +113,30 @@ export function createSettingsActions(options: SettingsActionsOptions) {
     void island?.setSystemMonitor(enabled);
   }
 
+  function setStartupEnabled(enabled: boolean) {
+    if (enabled === runtime.startupEnabled) {
+      return;
+    }
+
+    runtime.startupEnabled = enabled;
+    queueSync();
+    void island?.setStartup(enabled).then((startupEnabled) => {
+      if (typeof startupEnabled === "boolean" && startupEnabled !== runtime.startupEnabled) {
+        runtime.startupEnabled = startupEnabled;
+        queueSync();
+      }
+    });
+  }
+
   function applyUiSettings(settings: UiSettings | undefined) {
     if (settings && isLayout(settings.layout)) {
       runtime.layout = settings.layout;
     }
     if (settings && typeof settings.systemMonitorEnabled === "boolean") {
       runtime.systemMonitorEnabled = settings.systemMonitorEnabled;
+    }
+    if (settings && typeof settings.startupEnabled === "boolean") {
+      runtime.startupEnabled = settings.startupEnabled;
     }
     ensureSystemModeValid();
     queueSync();
@@ -217,6 +235,7 @@ export function createSettingsActions(options: SettingsActionsOptions) {
     setGlassStyle,
     setLayout,
     setSettingsPage,
+    setStartupEnabled,
     setSystemMonitorEnabled
   };
 }

@@ -48,6 +48,11 @@ function handleSettingsClick(
     return;
   }
 
+  if (action === "toggle-startup") {
+    context.setStartupEnabled(!context.startupEnabled);
+    return;
+  }
+
   if (!interactiveTarget) {
     if (context.settingsPage === "hub") {
       context.closeSettings();

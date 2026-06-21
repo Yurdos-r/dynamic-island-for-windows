@@ -7,6 +7,7 @@ export interface RendererEventContext {
   mode: IslandMode;
   settingsPage: SettingsPage;
   systemMonitorEnabled: boolean;
+  startupEnabled: boolean;
   privacyState: PrivacySnapshot;
   systemMediaActive: boolean;
   clipboardSnapshot: ClipboardSnapshot;
@@ -27,6 +28,7 @@ export interface RendererEventContext {
   isLayout(value: unknown): value is IslandLayout;
   setLayout(layout: IslandLayout): void;
   setSystemMonitorEnabled(enabled: boolean): void;
+  setStartupEnabled(enabled: boolean): void;
   closeSettings(): void;
   closeSystemCard(): void;
   togglePrivacyDetail(): void;

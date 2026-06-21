@@ -11,6 +11,7 @@ export interface RendererRuntimeState {
   settingsPage: SettingsPage;
   layout: IslandLayout;
   systemMonitorEnabled: boolean;
+  startupEnabled: boolean;
   systemSnapshot: SystemSnapshot;
   settingsLongPressPointerId: number | undefined;
   suppressNextClick: boolean;
@@ -80,8 +81,9 @@ export function createRendererRuntimeState(options: RendererRuntimeStateOptions)
     settingsReturnMode: "idle",
     settingsLongPressTimer: undefined,
     settingsPage: "hub",
-    layout: "classic",
+    layout: "top-center",
     systemMonitorEnabled: true,
+    startupEnabled: false,
     systemSnapshot: options.systemSnapshot,
     settingsLongPressPointerId: undefined,
     suppressNextClick: false,

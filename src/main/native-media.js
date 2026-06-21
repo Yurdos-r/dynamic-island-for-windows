@@ -1,11 +1,10 @@
-const path = require("node:path");
+const { getNativeHelperPath, getRuntimeDataPath } = require("./app-paths");
 const { createNativeMediaCommandFiles } = require("./native-media/command-files");
 const { createNativeMediaHelperProcess } = require("./native-media/helper-process");
 const { createNativeMediaLineDispatcher } = require("./native-media/line-dispatcher");
 const { createNativeMediaRuntime } = require("./native-media/runtime");
 
-const HELPER_SCRIPT_PATH = path.join(__dirname, "native-media-helper.ps1");
-const COMMAND_DIR = path.resolve(__dirname, "../../.tmp/native-media-commands");
+const HELPER_SCRIPT_NAME = "native-media-helper.ps1";
 const SNAPSHOT_MAX_AGE_MS = 1500;
 const COMMAND_TIMEOUT_MS = 1800;
 const RESTART_DELAY_MS = 1200;
@@ -14,10 +13,12 @@ function createNativeMediaSession(options = {}) {
   const logStartup = typeof options.logStartup === "function" ? options.logStartup : () => {};
   const platform = options.platform || process.platform;
   const pollInterval = Number.isFinite(options.pollInterval) ? options.pollInterval : 300;
+  const commandDir = options.commandDir || getRuntimeDataPath("native-media-commands");
+  const helperScriptPath = options.helperScriptPath || getNativeHelperPath(HELPER_SCRIPT_NAME);
   const runtime = createNativeMediaRuntime();
   const commandFiles = createNativeMediaCommandFiles({
     runtime,
-    commandDir: COMMAND_DIR,
+    commandDir,
     commandTimeoutMs: COMMAND_TIMEOUT_MS
   });
   const lineDispatcher = createNativeMediaLineDispatcher({ logStartup, runtime });
@@ -28,8 +29,8 @@ function createNativeMediaSession(options = {}) {
     logStartup,
     platform,
     pollInterval,
-    helperScriptPath: HELPER_SCRIPT_PATH,
-    commandDir: COMMAND_DIR,
+    helperScriptPath,
+    commandDir,
     restartDelayMs: RESTART_DELAY_MS
   });
 

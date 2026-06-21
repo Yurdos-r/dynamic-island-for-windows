@@ -9,8 +9,9 @@ const { app } = require("electron");
 const SETTINGS_FILE_NAME = "ui-settings.json";
 const VALID_LAYOUTS = new Set(["classic", "top-center"]);
 const DEFAULT_SETTINGS = Object.freeze({
-  layout: "classic",
-  systemMonitorEnabled: true
+  layout: "top-center",
+  systemMonitorEnabled: true,
+  startupEnabled: false
 });
 
 function getSettingsPath() {
@@ -28,6 +29,10 @@ function sanitize(raw) {
 
     if (typeof raw.systemMonitorEnabled === "boolean") {
       result.systemMonitorEnabled = raw.systemMonitorEnabled;
+    }
+
+    if (typeof raw.startupEnabled === "boolean") {
+      result.startupEnabled = raw.startupEnabled;
     }
   }
 
