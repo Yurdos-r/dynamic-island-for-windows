@@ -27,6 +27,9 @@ function createWindowCreationController(options = {}) {
   const systemWindowShouldShow = options.systemWindowShouldShow || (() => false);
   const unparkSystemWindow = options.unparkSystemWindow || (() => {});
   const systemWindowVisibility = options.systemWindowVisibility;
+  const createBrowserWindow = options.createIslandBrowserWindow || createIslandBrowserWindow;
+  const configureBrowserWindow = options.configureIslandBrowserWindow || configureIslandBrowserWindow;
+  const registerWindowLifecycle = options.registerIslandWindowLifecycle || registerIslandWindowLifecycle;
 
   if (!state) {
     throw new Error("state is required to create window creation controller.");
@@ -36,12 +39,20 @@ function createWindowCreationController(options = {}) {
   }
 
   function createWindow() {
+    if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+      logStartup("reuse-window", state.mainWindow.getBounds());
+      repositionStageWindow();
+      state.mainWindow.show();
+      raiseWindowForPointer(true);
+      return state.mainWindow;
+    }
+
     state.rendererReady = false;
     state.currentWindowHeight = getWindowHeightForMode(state.currentMode);
     const position = getStagePosition(state.currentWindowHeight);
     logStartup("create-window", { ...position, opaqueWindow });
 
-    state.mainWindow = createIslandBrowserWindow({
+    state.mainWindow = createBrowserWindow({
       width: state.stageWidth,
       height: state.currentWindowHeight,
       position,
@@ -49,11 +60,11 @@ function createWindowCreationController(options = {}) {
       preloadPath
     });
 
-    configureIslandBrowserWindow(state.mainWindow, { opaqueWindow });
+    configureBrowserWindow(state.mainWindow, { opaqueWindow });
     updateNativeHitShape();
     setMousePassthrough(true);
 
-    registerIslandWindowLifecycle({
+    registerWindowLifecycle({
       window: state.mainWindow,
       logStartup,
       events: {
@@ -100,16 +111,28 @@ function createWindowCreationController(options = {}) {
       }
     });
     loadRendererEntry(state.mainWindow, "index.html", "main", { getDevServerUrl, logStartup });
+    return state.mainWindow;
   }
 
   function createSystemWindow() {
+    if (state.systemWindow && !state.systemWindow.isDestroyed()) {
+      logStartup("reuse-system-window", state.systemWindow.getBounds());
+      if (systemWindowShouldShow()) {
+        unparkSystemWindow();
+        repositionSystemStageWindow();
+        state.systemWindow.show();
+        raiseSystemWindowForPointer(true);
+      }
+      return state.systemWindow;
+    }
+
     state.systemRendererReady = false;
     state.systemCurrentMode = "idle";
     state.systemWindowHeight = getSystemWindowHeightForMode(state.systemCurrentMode);
     const position = getSystemStagePosition(state.systemWindowHeight);
     logStartup("create-system-window", { ...position, opaqueWindow });
 
-    state.systemWindow = createIslandBrowserWindow({
+    state.systemWindow = createBrowserWindow({
       width: state.systemStageWidth,
       height: state.systemWindowHeight,
       position,
@@ -117,11 +140,11 @@ function createWindowCreationController(options = {}) {
       preloadPath
     });
 
-    configureIslandBrowserWindow(state.systemWindow, { opaqueWindow });
+    configureBrowserWindow(state.systemWindow, { opaqueWindow });
     updateSystemNativeHitShape();
     setSystemMousePassthrough(true);
 
-    registerIslandWindowLifecycle({
+    registerWindowLifecycle({
       window: state.systemWindow,
       logStartup,
       events: {
@@ -166,6 +189,7 @@ function createWindowCreationController(options = {}) {
       }
     });
     loadRendererEntry(state.systemWindow, "system.html", "system", { getDevServerUrl, logStartup });
+    return state.systemWindow;
   }
 
   function showExistingWindow() {

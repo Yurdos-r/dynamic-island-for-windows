@@ -12,7 +12,10 @@ export function syncMediaSurface(context: ViewSyncContext) {
   const progressTrack = context.app.querySelector<HTMLElement>(".progress-track");
   progressTrack?.setAttribute("aria-valuemax", context.track.durationSeconds.toString());
   progressTrack?.setAttribute("aria-valuenow", Math.round(context.progressSeconds).toString());
-  progressTrack?.setAttribute("aria-valuetext", `${context.formatTime(context.progressSeconds)} / ${context.formatTime(context.track.durationSeconds)}`);
+  progressTrack?.setAttribute(
+    "aria-valuetext",
+    `${context.formatTime(context.progressSeconds)} / ${context.formatTime(context.track.durationSeconds)}`
+  );
 
   const progressFill = context.app.querySelector<HTMLElement>('[data-field="progress-fill"]');
   if (progressFill) {
@@ -26,7 +29,7 @@ export function syncMediaSurface(context: ViewSyncContext) {
   }
 
   context.app.querySelectorAll<HTMLButtonElement>(".play-toggle").forEach((button) => {
-    button.setAttribute("aria-label", context.playing ? "鏆傚仠" : "鎾斁");
+    button.setAttribute("aria-label", context.playing ? "暂停" : "播放");
   });
 
   context.app.querySelectorAll<HTMLButtonElement>('[data-action="favorite-track"]').forEach((button) => {

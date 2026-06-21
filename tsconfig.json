@@ -5,13 +5,25 @@
     "module": "ESNext",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "allowJs": true,
-    "checkJs": false,
+    "checkJs": true,
     "skipLibCheck": true,
     "moduleResolution": "Bundler",
     "isolatedModules": true,
     "noEmit": true,
     "strict": true,
+    "noImplicitAny": false,
     "types": ["node"]
   },
-  "include": ["src"]
+  "include": [
+    "src/**/*.ts",
+    "src/main/inflink/bridge-contract.js",
+    "src/main/inflink/bridge-file-poller.js",
+    "src/main/inflink/bridge-http-router.js",
+    "src/main/inflink/bridge-normalizer.js",
+    "src/main/inflink/bridge-token.js",
+    "src/main/inflink/file-bridge.js",
+    "src/main/inflink/http-utils.js",
+    "src/main/media/media-normalizer.js",
+    "src/shared/**/*.js"
+  ]
 }

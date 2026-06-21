@@ -1,12 +1,13 @@
-const path = require("node:path");
-
 const BRIDGE_HOST = "127.0.0.1";
 const BRIDGE_PORT = 32147;
 const BRIDGE_PATH = "/dynamic-island-bridge";
-const FILE_BRIDGE_DIR = "C:\\betterncm\\dynamic-island-bridge";
-const FILE_SNAPSHOT_PATH = path.join(FILE_BRIDGE_DIR, "snapshot.json");
-const FILE_COMMAND_PATH = path.join(FILE_BRIDGE_DIR, "command.json");
-const FILE_RESULT_PATH = path.join(FILE_BRIDGE_DIR, "result.json");
+const BRIDGE_TOKEN_HEADER = "X-Dynamic-Island-Bridge-Token";
+const FILE_BRIDGE_VERSION = 2;
+const LEGACY_FILE_BRIDGE_DIR = "C:\\betterncm\\dynamic-island-bridge";
+const FILE_SNAPSHOT_NAME = "snapshot.json";
+const FILE_COMMAND_NAME = "command.json";
+const FILE_RESULT_NAME = "result.json";
+const TOKEN_FILE_NAME = "bridge-token.json";
 const COMMAND_TIMEOUT_MS = 2200;
 const SNAPSHOT_MAX_AGE_MS = 3500;
 const FILE_RESULT_POLL_INTERVAL_MS = 120;
@@ -17,10 +18,13 @@ module.exports = {
   BRIDGE_HOST,
   BRIDGE_PORT,
   BRIDGE_PATH,
-  FILE_BRIDGE_DIR,
-  FILE_SNAPSHOT_PATH,
-  FILE_COMMAND_PATH,
-  FILE_RESULT_PATH,
+  BRIDGE_TOKEN_HEADER,
+  FILE_BRIDGE_VERSION,
+  LEGACY_FILE_BRIDGE_DIR,
+  FILE_SNAPSHOT_NAME,
+  FILE_COMMAND_NAME,
+  FILE_RESULT_NAME,
+  TOKEN_FILE_NAME,
   COMMAND_TIMEOUT_MS,
   SNAPSHOT_MAX_AGE_MS,
   FILE_RESULT_POLL_INTERVAL_MS,

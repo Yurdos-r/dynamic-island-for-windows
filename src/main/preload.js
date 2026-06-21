@@ -1,5 +1,42 @@
 const { contextBridge, ipcRenderer } = require("electron");
-const { IPC_CHANNELS, ISLAND_LAYOUT_SET, ISLAND_MODE_SET, MEDIA_CONTROL_ACTION_SET } = require("../shared/island-contracts");
+
+const ISLAND_MODE_SET = new Set([
+  "idle",
+  "peek",
+  "clipboard-prompt",
+  "privacy",
+  "privacy-expanded",
+  "hover",
+  "expanded",
+  "clipboard",
+  "settings",
+  "system"
+]);
+const MEDIA_CONTROL_ACTION_SET = new Set(["toggle-play", "previous-track", "next-track", "favorite-track"]);
+const ISLAND_LAYOUT_SET = new Set(["classic", "top-center"]);
+const IPC_CHANNELS = Object.freeze({
+  rendererReady: "island:renderer-ready",
+  resize: "island:resize",
+  getUiSettings: "island:get-ui-settings",
+  setLayout: "island:set-layout",
+  setSystemMonitor: "island:set-system-monitor",
+  setStartup: "island:set-startup",
+  setInteracting: "island:set-interacting",
+  setMode: "island:set-mode",
+  avoidScale: "island:avoid-scale",
+  layoutChanged: "island:layout-changed",
+  mediaControl: "media:control",
+  mediaSeek: "media:seek",
+  mediaUpdate: "media:update",
+  privacyUpdate: "privacy:update",
+  clipboardWrite: "clipboard:write",
+  clipboardAcceptPending: "clipboard:accept-pending",
+  clipboardDismissPending: "clipboard:dismiss-pending",
+  clipboardClear: "clipboard:clear",
+  clipboardRemove: "clipboard:remove",
+  clipboardUpdate: "clipboard:update",
+  systemUpdate: "system:update"
+});
 
 function safeMode(mode) {
   return ISLAND_MODE_SET.has(mode) ? mode : "idle";

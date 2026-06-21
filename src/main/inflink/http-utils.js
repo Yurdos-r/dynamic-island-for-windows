@@ -1,9 +1,9 @@
-const { MAX_BODY_BYTES } = require("./bridge-contract");
+const { BRIDGE_TOKEN_HEADER, MAX_BODY_BYTES } = require("./bridge-contract");
 
 function setCorsHeaders(response) {
   response.setHeader("Access-Control-Allow-Origin", "*");
   response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  response.setHeader("Access-Control-Allow-Headers", `Content-Type, ${BRIDGE_TOKEN_HEADER}`);
   response.setHeader("Access-Control-Max-Age", "86400");
 }
 

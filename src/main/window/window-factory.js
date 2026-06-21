@@ -25,7 +25,7 @@ function createIslandBrowserWindow(options = {}) {
       preload: options.preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
       backgroundThrottling: false
     }
   });

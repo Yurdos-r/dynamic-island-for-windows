@@ -1,9 +1,18 @@
 const fs = require("node:fs");
+const path = require("node:path");
 
-const { FILE_BRIDGE_DIR } = require("./bridge-contract");
+function ensureFileBridgeDir(dirPath) {
+  fs.mkdirSync(dirPath, { recursive: true });
+}
 
-function ensureFileBridgeDir() {
-  fs.mkdirSync(FILE_BRIDGE_DIR, { recursive: true });
+function ensureFileBridgeDirs(dirPaths) {
+  for (const dirPath of dirPaths) {
+    ensureFileBridgeDir(dirPath);
+  }
+}
+
+function getFileBridgePath(dirPath, fileName) {
+  return path.join(dirPath, fileName);
 }
 
 function readJsonFile(filePath) {
@@ -15,14 +24,23 @@ function readJsonFile(filePath) {
 }
 
 function writeJsonFile(filePath, payload) {
-  ensureFileBridgeDir();
+  ensureFileBridgeDir(path.dirname(filePath));
   const tempPath = `${filePath}.${process.pid}.tmp`;
   fs.writeFileSync(tempPath, JSON.stringify(payload), "utf8");
   fs.renameSync(tempPath, filePath);
 }
 
+function writeJsonFileToDirs(dirPaths, fileName, payload) {
+  for (const dirPath of dirPaths) {
+    writeJsonFile(getFileBridgePath(dirPath, fileName), payload);
+  }
+}
+
 module.exports = {
   ensureFileBridgeDir,
+  ensureFileBridgeDirs,
+  getFileBridgePath,
   readJsonFile,
-  writeJsonFile
+  writeJsonFile,
+  writeJsonFileToDirs
 };

@@ -2,16 +2,16 @@
   --island-width: 360px;
   --island-height: 44px;
   --island-radius: 22px;
-  /* 鐜荤拑寮哄害锛堢敱 data-glass-intensity 瑕嗙洊锛岄粯璁?medium锛夈€備笁绉嶇幓鐠冮鏍肩殑
-     backdrop-filter 缁熶竴璇昏繖涓や釜鍙橀噺锛屽己搴﹀嵆鍦ㄦ璋冭妭妯＄硦涓庨ケ鍜屻€?*/
+  /* Glass intensity defaults. All glass styles read these variables for blur
+     and saturation so the strength control stays centralized. */
   --glass-blur: 14px;
   --glass-saturate: 1.4;
   --glass-tint-alpha: 0.32;
   --transition-spring: cubic-bezier(0.2, 0.85, 0.18, 1);
   --transition-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --transition-peak: cubic-bezier(0.16, 1, 0.3, 1);
-  /* Spring easing 鈥?replicates Framer Motion's spring(stiffness 300,
-     damping 26, mass 1): an underdamped curve (味鈮?.75) that overshoots the
+  /* Spring easing - replicates Framer Motion's spring(stiffness 300,
+     damping 26, mass 1): an underdamped curve that overshoots the
      target by ~2.8% then settles. This is what gives the capsule its "jelly"
      weight instead of the flat glide of a plain ease-out. Sampled from the
      analytic spring response over its ~500ms natural settle, normalised so it
@@ -33,7 +33,9 @@
   justify-content: flex-start;
   padding: 2px;
   pointer-events: none;
-  /* 浠诲姟鏍忛€€閬匡細鑳跺泭鏁翠綋绛夋瘮缂╁皬璁╀綅锛堢敱涓昏繘绋嬫寜浠诲姟鏍忓浘鏍囧尯宸︾紭涓嬪彂 --avoid-scale锛夈€?     浠庡乏涓嬭缂╂斁锛屼繚鎸佽兌鍥婅创杈逛笉浣嶇Щ銆傜敤寮圭哀鏇茬嚎璁╃缉鏀?澶嶄綅椤烘粦銆?*/
+  /* Taskbar avoidance: the main process sends --avoid-scale when the taskbar
+     icon area approaches the island. Scale from bottom-left to keep the edge
+     anchored while the spring curve smooths shrink/restore. */
   --avoid-scale: 1;
   transform: scale(var(--avoid-scale));
   transform-origin: bottom left;
@@ -88,7 +90,7 @@
   --island-radius: 30px;
 }
 
-/* 椤堕儴灞呬腑甯冨眬涓嬶紝绯荤粺鐩戞帶浠ョ嫭绔嬪崱鐗囨€佸唴宓屼富鑳跺泭锛?60脳300锛夈€?*/
+/* In top-center layout, system monitor opens as a standalone card. */
 #app[data-mode="system"] {
   --island-width: 360px;
   --island-height: 300px;
@@ -96,7 +98,9 @@
 }
 
 /* ============================================================
-   甯冨眬锛氶《閮ㄥ眳涓紙data-layout="top-center"锛?   缁忓吀甯冨眬娌跨敤榛樿锛堝乏涓嬪仠闈狅紝bottom left 褰㈠彉鍘熺偣锛夈€傞《閮ㄥ眳涓?   鎶婅兌鍥婃敼涓哄睆骞曢《閮ㄦ按骞冲眳涓紝鍗＄墖鍚戜笅鐢熼暱锛屾晠褰㈠彉鍘熺偣鏀?top center銆?   ============================================================ */
+   Layout: top-center uses one capsule at the top of the screen and grows
+   cards downward from a top-center transform origin.
+   ============================================================ */
 #app[data-layout="top-center"] {
   align-items: flex-start;
   justify-content: center;
@@ -107,7 +111,7 @@
   transform-origin: top center;
 }
 
-/* 鐜荤拑寮哄害涓夋。锛氳皟鑺傛ā绯婇噺涓庨ケ鍜屽害锛屽涓夌鐜荤拑椋庢牸缁熶竴鐢熸晥銆?   娑叉€佹姌灏勯鏍肩殑 SVG 浣嶇Щ scale 鍙︾敱 JS 鎸夋。浣嶈仈鍔ㄨ缃€?*/
+/* Glass intensity presets. SVG displacement scale is adjusted from JS. */
 #app[data-glass-intensity="low"] {
   --glass-blur: 6px;
   --glass-saturate: 1.15;
@@ -125,4 +129,3 @@
   --glass-saturate: 1.85;
   --glass-tint-alpha: 0.52;
 }
-

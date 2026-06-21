@@ -1,6 +1,9 @@
 (function () {
   const BRIDGE_BASE_URL = "http://127.0.0.1:32147/dynamic-island-bridge";
+  const BRIDGE_TOKEN_HEADER = "X-Dynamic-Island-Bridge-Token";
+  const FILE_BRIDGE_VERSION = 2;
   const FILE_BRIDGE_DIR = "./dynamic-island-bridge";
+  const TOKEN_FILE_PATH = `${FILE_BRIDGE_DIR}/bridge-token.json`;
   const FILE_SNAPSHOT_PATH = `${FILE_BRIDGE_DIR}/snapshot.json`;
   const FILE_COMMAND_PATH = `${FILE_BRIDGE_DIR}/command.json`;
   const FILE_RESULT_PATH = `${FILE_BRIDGE_DIR}/result.json`;
@@ -10,6 +13,7 @@
   const COMMAND_MAX_AGE_MS = 5000;
   const FILE_IO_TIMEOUT_MS = 350;
   const FILE_IO_COOLDOWN_MS = 5000;
+  const TOKEN_REFRESH_MS = 2000;
   const LYRICS_MAX_LINES = 120;
   const LYRICS_FETCH_TIMEOUT_MS = 2200;
   const LYRICS_EMPTY_RETRY_MS = 30000;
@@ -20,6 +24,8 @@
   let lastSnapshotAt = 0;
   let bootstrapped = false;
   let fileIoSuspendedUntil = 0;
+  let bridgeToken = "";
+  let lastTokenReadAt = 0;
   let lyricsHookInstalled = false;
   let lyricsCache = {
     songId: "",
@@ -31,7 +37,7 @@
   let lyricsFetchSongId = "";
 
   window.DynamicIslandBridge = {
-    version: "0.4.0",
+    version: "0.5.0",
     status: "starting",
     lastCommandId: "",
     lastError: ""
@@ -99,6 +105,54 @@
           resolve(fallback);
         });
     });
+  }
+
+  function normalizeBridgeToken(value) {
+    const text = String(value || "").trim();
+    return /^[A-Za-z0-9._~-]{32,256}$/.test(text) ? text : "";
+  }
+
+  async function refreshBridgeToken(force) {
+    if (!force && bridgeToken && Date.now() - lastTokenReadAt < TOKEN_REFRESH_MS) {
+      return bridgeToken;
+    }
+
+    lastTokenReadAt = Date.now();
+    const fsApi = getFsApi();
+    if (!fsApi) {
+      return bridgeToken;
+    }
+
+    const token = await withTimeout(async () => {
+      const text = await fsApi.readFileText(TOKEN_FILE_PATH);
+      if (!text) {
+        return "";
+      }
+
+      const rawToken = normalizeBridgeToken(text);
+      if (rawToken) {
+        return rawToken;
+      }
+
+      const payload = JSON.parse(text);
+      return normalizeBridgeToken(payload.bridgeToken || payload.token);
+    }, FILE_IO_TIMEOUT_MS, "");
+
+    if (token) {
+      bridgeToken = token;
+    }
+
+    return bridgeToken;
+  }
+
+  async function getBridgeHeaders(includeJson) {
+    const token = await refreshBridgeToken(false);
+    const headers = includeJson ? { "Content-Type": "application/json" } : {};
+    if (token) {
+      headers[BRIDGE_TOKEN_HEADER] = token;
+    }
+
+    return headers;
   }
 
   async function ensureFileBridgeDir() {
@@ -919,9 +973,7 @@
   async function postJson(path, payload) {
     const response = await fetch(`${BRIDGE_BASE_URL}${path}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: await getBridgeHeaders(true),
       body: JSON.stringify(payload)
     });
 
@@ -933,6 +985,7 @@
   }
 
   async function postSnapshot(force) {
+    await refreshBridgeToken(false);
     const snapshot = await createSnapshot();
     const snapshotJson = JSON.stringify(snapshot);
     const now = Date.now();
@@ -952,6 +1005,8 @@
 
     void writeJsonFile(FILE_SNAPSHOT_PATH, {
       bridge: "dynamic-island-inflink",
+      version: FILE_BRIDGE_VERSION,
+      bridgeToken,
       snapshot,
       updatedAt: now
     });
@@ -968,6 +1023,9 @@
 
     const fileResult = writeJsonFile(FILE_RESULT_PATH, {
       ...result,
+      bridge: "dynamic-island-inflink",
+      version: FILE_BRIDGE_VERSION,
+      bridgeToken,
       updatedAt: Date.now()
     });
 
@@ -1187,7 +1245,8 @@
   async function pollCommandOnce() {
     try {
       const response = await fetch(`${BRIDGE_BASE_URL}/command?lastId=${encodeURIComponent(lastCommandId)}`, {
-        cache: "no-store"
+        cache: "no-store",
+        headers: await getBridgeHeaders(false)
       });
 
       if (!response.ok) {

@@ -3,7 +3,7 @@
   "manifest_version": 1,
   "name": "Dynamic Island Bridge",
   "slug": "DynamicIslandBridge",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "author": "Dynamic Island for Windows",
   "description": "Bridge Dynamic Island for Windows media state and controls to InfLink-rs.",
   "betterncm_version": ">=1.0.0",

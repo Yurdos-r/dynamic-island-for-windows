@@ -249,7 +249,9 @@
 }
 
 /* ============================================================
-   涓荤獥鍙ｅ唴宓岀郴缁熺洃鎺э紙椤堕儴灞呬腑甯冨眬锛夆€斺€斾富绐楀彛娌℃湁 data-role="system"锛?   鏁呯郴缁熼厤鑹茶鍒欓渶琛ヤ竴浠戒富绐楀彛浣滅敤鍩燂細浠呭湪灞曠ず绯荤粺鍐呭锛堢郴缁熷崱 / 闈欐伅璇绘暟锛?   鏃剁粰鑳跺泭澶栧３涓婄郴缁熻壊璋冿紝骞跺鐢ㄥ悓鏍风殑璐熻浇娓愬彉銆?   ============================================================ */
+   Main-window embedded system monitor. The main window has no data-role="system",
+   so it needs a scoped system tint only while showing system content.
+   ============================================================ */
 #app:not([data-role="system"])[data-mode="system"] .island-shell,
 #app:not([data-role="system"])[data-idle-system="true"][data-mode="idle"] .island-shell,
 #app:not([data-role="system"])[data-idle-system="true"][data-mode="peek"] .island-shell {

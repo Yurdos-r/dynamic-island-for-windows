@@ -1,24 +1,44 @@
 const http = require("node:http");
+const path = require("node:path");
 const {
   BRIDGE_HOST,
   BRIDGE_PATH,
   BRIDGE_PORT,
-  FILE_BRIDGE_DIR,
-  SNAPSHOT_MAX_AGE_MS
+  SNAPSHOT_MAX_AGE_MS,
+  TOKEN_FILE_NAME
 } = require("./inflink/bridge-contract");
 const { createBridgeCommandDispatcher } = require("./inflink/bridge-command-dispatcher");
 const { createBridgeFilePoller } = require("./inflink/bridge-file-poller");
 const { createBridgeHttpRouter } = require("./inflink/bridge-http-router");
+const { resolveFileBridgeDirs } = require("./inflink/bridge-paths");
 const { createBridgeRuntime } = require("./inflink/bridge-runtime");
+const { createBridgeTokenStore } = require("./inflink/bridge-token");
 
 function createInflinkBridge(options = {}) {
   const logStartup = typeof options.logStartup === "function" ? options.logStartup : () => {};
   const onSnapshot = typeof options.onSnapshot === "function" ? options.onSnapshot : () => {};
   const host = options.host || BRIDGE_HOST;
   const port = Number.isFinite(options.port) ? options.port : BRIDGE_PORT;
+  const bridgeDirs = resolveFileBridgeDirs(options);
+  const tokenStore = options.bridgeToken
+    ? {
+        token: options.bridgeToken,
+        tokenPaths: bridgeDirs.map((dirPath) => path.join(dirPath, TOKEN_FILE_NAME)),
+        writeTokenFiles: () => {}
+      }
+    : createBridgeTokenStore({
+        tokenPaths: bridgeDirs.map((dirPath) => path.join(dirPath, TOKEN_FILE_NAME)),
+        logStartup
+      });
+  const bridgeToken = tokenStore.token;
   const runtime = createBridgeRuntime({ logStartup, onSnapshot });
   const bridgeState = runtime.state;
-  const filePoller = createBridgeFilePoller({ runtime, logStartup });
+  const filePoller = createBridgeFilePoller({
+    runtime,
+    logStartup,
+    bridgeDirs,
+    bridgeToken
+  });
   const commandDispatcher = createBridgeCommandDispatcher({
     runtime,
     startBridge: start,
@@ -29,6 +49,8 @@ function createInflinkBridge(options = {}) {
     runtime,
     host,
     port,
+    bridgeToken,
+    fileBridgeDirs: bridgeDirs,
     getSnapshot
   });
 
@@ -64,6 +86,7 @@ function createInflinkBridge(options = {}) {
   }
 
   function start() {
+    tokenStore.writeTokenFiles();
     filePoller.ensureBridgeDir();
     filePoller.startResultPolling();
 
@@ -93,7 +116,9 @@ function createInflinkBridge(options = {}) {
         bridgeState.startPromise = undefined;
         logStartup("inflink-bridge-ready", {
           host,
-          port
+          port,
+          fileBridgeDirs: bridgeDirs,
+          tokenFiles: tokenStore.tokenPaths
         });
         resolve(true);
       });
@@ -145,6 +170,5 @@ module.exports = {
   BRIDGE_HOST,
   BRIDGE_PORT,
   BRIDGE_PATH,
-  FILE_BRIDGE_DIR,
   createInflinkBridge
 };

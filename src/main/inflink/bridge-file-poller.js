@@ -1,17 +1,25 @@
 const fs = require("node:fs");
 
 const {
-  FILE_COMMAND_PATH,
-  FILE_RESULT_PATH,
+  FILE_BRIDGE_VERSION,
+  FILE_COMMAND_NAME,
+  FILE_RESULT_NAME,
   FILE_RESULT_POLL_INTERVAL_MS,
-  FILE_SNAPSHOT_PATH
+  FILE_SNAPSHOT_NAME
 } = require("./bridge-contract");
 const { createPublicCommand, normalizeBridgeSnapshot, normalizeFavoriteState } = require("./bridge-normalizer");
-const { ensureFileBridgeDir, readJsonFile, writeJsonFile } = require("./file-bridge");
+const { ensureFileBridgeDirs, getFileBridgePath, readJsonFile, writeJsonFileToDirs } = require("./file-bridge");
+const { payloadHasValidBridgeToken } = require("./bridge-token");
+
+function getErrorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
 
 function createBridgeFilePoller(options = {}) {
   const runtime = options.runtime;
   const logStartup = typeof options.logStartup === "function" ? options.logStartup : () => {};
+  const bridgeDirs = Array.isArray(options.bridgeDirs) ? options.bridgeDirs : [];
+  const bridgeToken = typeof options.bridgeToken === "string" ? options.bridgeToken : "";
 
   if (!runtime) {
     throw new Error("runtime is required to create bridge file poller.");
@@ -21,32 +29,43 @@ function createBridgeFilePoller(options = {}) {
 
   function ensureBridgeDir() {
     try {
-      ensureFileBridgeDir();
+      ensureFileBridgeDirs(bridgeDirs);
     } catch (error) {
       logStartup("inflink-file-bridge-error", {
         action: "mkdir",
-        error: error?.message || String(error)
+        error: getErrorMessage(error)
       });
     }
   }
 
+  function readFreshPayloads(fileName, maxAgeMs) {
+    return bridgeDirs
+      .map((dirPath) => {
+        const filePath = getFileBridgePath(dirPath, fileName);
+        try {
+          const stats = fs.statSync(filePath);
+          return { dirPath, filePath, stats };
+        } catch {
+          return undefined;
+        }
+      })
+      .filter(Boolean)
+      .filter((entry) => Date.now() - entry.stats.mtimeMs <= maxAgeMs)
+      .sort((a, b) => b.stats.mtimeMs - a.stats.mtimeMs)
+      .map((entry) => ({
+        ...entry,
+        payload: readJsonFile(entry.filePath)
+      }))
+      .filter((entry) => entry.payload && payloadHasValidBridgeToken(entry.payload, bridgeToken));
+  }
+
   function readFileSnapshot(maxAgeMs) {
-    let stats;
-    try {
-      stats = fs.statSync(FILE_SNAPSHOT_PATH);
-    } catch {
+    const entry = readFreshPayloads(FILE_SNAPSHOT_NAME, maxAgeMs)[0];
+    if (!entry) {
       return undefined;
     }
 
-    if (Date.now() - stats.mtimeMs > maxAgeMs) {
-      return undefined;
-    }
-
-    const payload = readJsonFile(FILE_SNAPSHOT_PATH);
-    if (!payload) {
-      return undefined;
-    }
-
+    const { payload, stats } = entry;
     const snapshot = normalizeBridgeSnapshot(payload.snapshot || payload);
     snapshot.updatedAt = Number(payload.updatedAt) || stats.mtimeMs;
     runtime.setLastSnapshot(snapshot, "file");
@@ -58,7 +77,9 @@ function createBridgeFilePoller(options = {}) {
       return;
     }
 
-    const payload = readJsonFile(FILE_RESULT_PATH);
+    const payload = bridgeDirs
+      .map((dirPath) => readJsonFile(getFileBridgePath(dirPath, FILE_RESULT_NAME)))
+      .find((candidate) => candidate && payloadHasValidBridgeToken(candidate, bridgeToken));
     if (!payload || String(payload.id || "") !== bridgeState.pendingCommand.id) {
       return;
     }
@@ -96,8 +117,10 @@ function createBridgeFilePoller(options = {}) {
 
   function writeCommand(command) {
     try {
-      writeJsonFile(FILE_COMMAND_PATH, {
+      writeJsonFileToDirs(bridgeDirs, FILE_COMMAND_NAME, {
         bridge: "dynamic-island-inflink",
+        version: FILE_BRIDGE_VERSION,
+        bridgeToken,
         command: createPublicCommand(command),
         updatedAt: Date.now()
       });
@@ -106,7 +129,7 @@ function createBridgeFilePoller(options = {}) {
         action: "write-command",
         id: command.id,
         type: command.type,
-        error: error?.message || String(error)
+        error: getErrorMessage(error)
       });
     }
   }

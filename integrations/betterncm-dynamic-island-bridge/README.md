@@ -16,6 +16,10 @@ Copy this whole `betterncm-dynamic-island-bridge` folder into your BetterNCM plu
 
 When it is loaded, the plugin talks to `http://127.0.0.1:32147/dynamic-island-bridge`.
 
+Dynamic Island for Windows 0.5.0+ protects the local bridge with a per-install token. The app writes `bridge-token.json` into the shared `dynamic-island-bridge` folder, and this plugin sends that token in the `X-Dynamic-Island-Bridge-Token` header. File bridge snapshots/results are v2 payloads and include `bridgeToken`.
+
+If you override the shared folder in the desktop app with `DYNAMIC_ISLAND_BRIDGE_DIR`, make sure BetterNCM can read the same folder. Older plugin versions are intentionally rejected by the desktop app.
+
 Supported commands:
 
 - `seek`: calls `window.InfLinkApi.seekTo(positionMs)`.

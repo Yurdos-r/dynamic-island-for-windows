@@ -41,7 +41,6 @@ export interface ClipboardSnapshot {
   updatedAt: number;
 }
 
-
 export const ISLAND_STATE_NAMES = {
   capsule: "胶囊",
   island: "小岛",
@@ -50,8 +49,8 @@ export const ISLAND_STATE_NAMES = {
 
 export const GLASS_STYLE_OPTIONS: ReadonlyArray<{ id: GlassStyle; label: string; hint: string }> = [
   { id: "classic", label: "经典", hint: "默认毛玻璃" },
-  { id: "liquid-css", label: "液态", hint: "通透 · 镜面高光" },
-  { id: "liquid-svg", label: "液态折射", hint: "边缘折射 · 较耗性能" }
+  { id: "liquid-css", label: "液态", hint: "通透 / 镜面高光" },
+  { id: "liquid-svg", label: "液态折射", hint: "边缘折射 / 更耗性能" }
 ];
 export const DEFAULT_GLASS_STYLE: GlassStyle = "classic";
 export const GLASS_STYLE_STORAGE_KEY = "dynamic-island:glass-style";
@@ -62,19 +61,16 @@ export const GLASS_INTENSITY_OPTIONS: ReadonlyArray<{ id: GlassIntensity; label:
 ];
 export const DEFAULT_GLASS_INTENSITY: GlassIntensity = "medium";
 export const GLASS_INTENSITY_STORAGE_KEY = "dynamic-island:glass-intensity";
-// 液态折射 SVG 位移强度，按档位联动（与 styles.css 的 blur/saturate 配合）。
 export const GLASS_INTENSITY_DISPLACE_SCALE: Record<GlassIntensity, number> = {
   low: 28,
   medium: 62,
   high: 104
 };
 export const SETTINGS_LONG_PRESS_MS = 550;
-// 布局选项：经典（左下主胶囊 + 右下系统监控）/ 顶部居中（单胶囊，系统监控并入）。
 export const LAYOUT_OPTIONS: ReadonlyArray<{ id: IslandLayout; label: string; hint: string }> = [
   { id: "top-center", label: "顶部居中", hint: "屏幕顶部单胶囊" },
-  { id: "classic", label: "经典", hint: "左下胶囊 · 右下系统监控" }
+  { id: "classic", label: "经典", hint: "左下胶囊 / 右下系统监控" }
 ];
-// 设置中心导航项 → 对应二级页。
 export const SETTINGS_NAV_ITEMS: ReadonlyArray<{ page: "appearance" | "layout" | "monitor"; label: string; hint: string }> = [
   { page: "appearance", label: "外观", hint: "玻璃质感与强度" },
   { page: "layout", label: "布局", hint: "胶囊位置与呈现" },

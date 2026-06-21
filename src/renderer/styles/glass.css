@@ -34,14 +34,13 @@
 }
 
 /* ============================================================
-   鐜荤拑椋庢牸锛堢敤鎴峰湪璁剧疆鍗＄墖涓垏鎹紝榛樿 classic锛?   鍙鐩?.island-shell 鐨?鏉愯川"灞炴€р€斺€旇儗鏅?/ 杈规 / 闃村奖 /
-   backdrop-filter鈥斺€旂粷涓嶈Е纰板昂瀵搞€佸渾瑙掋€佸姩鐢汇€佸竷灞€锛屼互涓庣幇鏈?   鐘舵€佹満鍜屽舰鍙橀€昏緫瀹屽叏闅旂銆俢lassic 涓嶅啓瑕嗙洊锛屾部鐢ㄤ笂鏂归粯璁ゅ€笺€?
-   鐗瑰紓鎬ц鏄庯細鐜版湁鐨?   #app[data-media-active="false"][data-mode="idle"] .island-shell
-   鏄?(1 id + 2 attr + 1 class)銆備负绋冲畾鍘嬭繃瀹冿紝娑叉€侀鏍肩敤
-   #app[data-glass="鈥?][data-media-active] .island-shell
-   杈惧埌 (1 id + 2 attr + 1 class) 骞朵功鍐欏湪鍚庯紝浠庤€岃儨鍑恒€?   ============================================================ */
+   Glass styles only override material properties on .island-shell: background,
+   border, shadow, and backdrop-filter. Size, radius, layout, and motion stay in
+   the state/layout styles. Liquid styles match the existing idle selector
+   specificity and appear later, so they win predictably.
+   ============================================================ */
 
-/* 鏂规 B 鈥斺€?绾?CSS 鎷熺湡娑叉€佺幓鐠冿細鏇撮€忋€佹洿钖?+ 澶氬眰闀滈潰楂樺厜 */
+/* Plan B: CSS-only liquid glass with a lighter tint and layered highlights. */
 #app[data-glass="liquid-css"][data-media-active] .island-shell,
 #app[data-glass="liquid-css"] .island-shell {
   background:
@@ -75,7 +74,7 @@
     inset 0 0 12px rgba(255, 255, 255, 0.1);
 }
 
-/* 鏂规 C 鈥斺€?SVG 浣嶇Щ鎶樺皠娑叉€佺幓鐠冿細杈圭紭鐪熷疄寮姌鑳屾櫙锛堝紩鐢?index.html 涓殑婊ら暅锛?*/
+/* Plan C: SVG displacement for stronger edge refraction. */
 #app[data-glass="liquid-svg"][data-media-active] .island-shell,
 #app[data-glass="liquid-svg"] .island-shell {
   background:
@@ -124,7 +123,7 @@
 }
 
 /* Capsule morphs (idle / peek / hover / privacy) have generous room inside
-   the stage window, so they get the full underdamped spring 鈥?the visible
+   the stage window, so they get the full underdamped spring; the visible
    overshoot is what reads as "weight". Cards (expanded / clipboard) keep the
    soft curve above because a bounce would clip against the tight window. */
 #app[data-mode="idle"] .island-shell,
@@ -276,4 +275,3 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.34),
     inset 0 0 18px rgba(255, 255, 255, 0.05);
 }
-

@@ -379,4 +379,6 @@
 }
 
 /* ============================================================
-   璁剧疆鍗＄墖锛堥暱鎸?idle/peek 鑳跺泭杩涘叆锛?   璁剧疆涓績锛坔ub锛? 涓変釜浜岀骇椤碉紙澶栬 / 甯冨眬 / 绯荤粺鐩戞帶锛夈€?   settings-layer 浣滀负瀹氫綅瀹瑰櫒锛宧ub 涓庡悇 page 缁濆濉厖锛?   鐢?#app[data-settings-page] 鍐冲畾鏄剧ず鍝竴涓€?   ============================================================ */
+   Settings card. The settings layer is the positioned container; the hub and
+   subpages fill it, and #app[data-settings-page] selects the visible page.
+   ============================================================ */

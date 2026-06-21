@@ -30,7 +30,7 @@
   transform: translate3d(0, 0, 0);
 }
 
-/* hub 瀵艰埅 */
+/* Hub navigation. */
 .settings-nav {
   display: flex;
   flex-direction: column;
@@ -102,7 +102,7 @@
   height: 16px;
 }
 
-/* 浜岀骇椤佃繑鍥炴爣棰樻爮 */
+/* Subpage back header. */
 .settings-sub-header {
   align-items: center;
 }
@@ -137,12 +137,12 @@
   height: 17px;
 }
 
-/* 甯冨眬浜岀骇椤碉細涓ゅ紶骞舵帓棰勮鍗?*/
+/* Layout subpage: two side-by-side preview cards. */
 .settings-options-layout {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-/* 甯冨眬棰勮缂╃暐鍥撅細鍦?chessboard 搴曞浘涓婄敾鍑鸿兌鍥婂仠闈犱綅缃?*/
+/* Layout previews draw capsule positions over the checkerboard base. */
 .layout-preview-classic::after,
 .layout-preview-top-center::after {
   background: rgba(15, 23, 42, 0.55);
@@ -160,7 +160,7 @@
   box-shadow: 0 2px 6px rgba(14, 165, 233, 0.4);
 }
 
-/* 缁忓吀锛氬乏涓嬩富鑳跺泭 + 鍙充笅绯荤粺鑳跺泭 */
+/* Classic: main capsule bottom-left plus system capsule bottom-right. */
 .layout-preview-classic::before {
   left: 11px;
   bottom: 11px;
@@ -171,7 +171,7 @@
     16px 0 0 rgba(148, 163, 184, 0.85);
 }
 
-/* 椤堕儴灞呬腑锛氬崟鏉¤兌鍥婂眳涓创椤?*/
+/* Top-center: one capsule centered at the top. */
 .layout-preview-top-center::before {
   top: 11px;
   left: 50%;
@@ -180,7 +180,7 @@
   transform: translateX(-50%);
 }
 
-/* 绯荤粺鐩戞帶浜岀骇椤碉細鍏ㄥ眬寮€鍏?*/
+/* System monitor subpage: global toggle. */
 .settings-toggle {
   display: flex;
   align-items: center;

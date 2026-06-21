@@ -255,7 +255,8 @@
   transition-delay: 58ms;
 }
 
-/* 椤堕儴灞呬腑 + 鐩戞帶寮€鍚?+ 鏃犲墠鍙板唴瀹癸紙闊充箰/鏉冮檺/鍓创鏉匡級鏃讹紝闈欐伅鑳跺泭甯搁┗绯荤粺绱у噾璇绘暟锛?   闅愯棌榛樿 idle pill锛涚偣鍑诲睍寮€鍒扮郴缁熷崱銆?*/
+/* In top-center layout, an idle island can show compact system readings when
+   system monitoring is enabled and no media/privacy/clipboard surface is active. */
 #app[data-idle-system="true"][data-mode="idle"] .system-capsule-layer,
 #app[data-idle-system="true"][data-mode="peek"] .system-capsule-layer {
   opacity: 1;
@@ -628,4 +629,3 @@
 #app[data-mode="clipboard-prompt"] .expanded-layer {
   visibility: hidden;
 }
-

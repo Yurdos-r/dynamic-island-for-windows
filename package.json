@@ -1,6 +1,6 @@
 {
   "name": "dynamic-island-for-windows",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A Windows-first Dynamic Island prototype inspired by Ripple.",
   "main": "src/main/main.js",
   "author": "Open Tools",
@@ -17,6 +17,8 @@
     "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on tcp:5173 && electron . --dev-server=http://127.0.0.1:5173 --software-rendering\"",
     "start": "npm run build && electron . --software-rendering",
     "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "check": "npm run test && npm run build",
     "dist:portable": "npm run build && electron-builder --win portable",
     "dist:installer": "npm run build && electron-builder --win nsis",
     "dist:win": "npm run build && electron-builder --win",
@@ -33,6 +35,7 @@
     "electron-builder": "^26.15.3",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
+    "vitest": "^4.1.9",
     "wait-on": "^9.0.10"
   },
   "build": {

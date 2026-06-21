@@ -1,18 +1,32 @@
-const { BRIDGE_PATH, FILE_BRIDGE_DIR } = require("./bridge-contract");
+const { BRIDGE_PATH } = require("./bridge-contract");
 const { createPublicCommand, normalizeBridgeSnapshot, normalizeFavoriteState } = require("./bridge-normalizer");
 const { readJsonBody, sendJson, setCorsHeaders } = require("./http-utils");
+const { hasValidRequestBridgeToken } = require("./bridge-token");
+
+function getErrorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
 
 function createBridgeHttpRouter(options = {}) {
   const runtime = options.runtime;
   const host = options.host || "127.0.0.1";
   const port = Number.isFinite(options.port) ? options.port : 32147;
   const getSnapshot = typeof options.getSnapshot === "function" ? options.getSnapshot : () => ({ available: false, active: false });
+  const bridgeToken = typeof options.bridgeToken === "string" ? options.bridgeToken : "";
+  const fileBridgeDirs = Array.isArray(options.fileBridgeDirs) ? options.fileBridgeDirs : [];
 
   if (!runtime) {
     throw new Error("runtime is required to create bridge HTTP router.");
   }
 
   const bridgeState = runtime.state;
+
+  function sendUnauthorized(response) {
+    sendJson(response, 401, {
+      ok: false,
+      error: "Unauthorized."
+    });
+  }
 
   function handleCommandRequest(_request, response, url) {
     const lastId = url.searchParams.get("lastId") || "";
@@ -52,7 +66,7 @@ function createBridgeHttpRouter(options = {}) {
     } catch (error) {
       sendJson(response, 400, {
         ok: false,
-        error: error?.message || String(error)
+        error: getErrorMessage(error)
       });
     }
   }
@@ -68,7 +82,7 @@ function createBridgeHttpRouter(options = {}) {
     } catch (error) {
       sendJson(response, 400, {
         ok: false,
-        error: error?.message || String(error)
+        error: getErrorMessage(error)
       });
     }
   }
@@ -80,7 +94,7 @@ function createBridgeHttpRouter(options = {}) {
       pendingCommand: createPublicCommand(bridgeState.pendingCommand),
       lastResult: bridgeState.lastResult,
       lastSnapshot: getSnapshot(),
-      fileBridgeDir: FILE_BRIDGE_DIR,
+      fileBridgeDirs,
       port
     });
   }
@@ -95,6 +109,11 @@ function createBridgeHttpRouter(options = {}) {
     }
 
     const url = new URL(request.url || "/", `http://${host}:${port}`);
+
+    if (!hasValidRequestBridgeToken(request, bridgeToken)) {
+      sendUnauthorized(response);
+      return;
+    }
 
     if (request.method === "GET" && url.pathname === `${BRIDGE_PATH}/command`) {
       handleCommandRequest(request, response, url);

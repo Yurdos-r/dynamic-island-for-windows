@@ -29,7 +29,13 @@ function resolveModeForMediaState(mode, { mediaActive = false, privacyActive = f
     : "idle";
 }
 
+function getWorkArea(display) {
+  return display.workArea || display.bounds;
+}
+
 function getMainStageMetrics({ display, layout, windowHeight }) {
+  const workArea = getWorkArea(display);
+  const horizontalArea = layout === "top-center" ? display.bounds : workArea;
   const widestMode = Math.max(
     ISLAND_SIZES.expanded.width,
     ISLAND_SIZES.clipboard.width,
@@ -37,18 +43,18 @@ function getMainStageMetrics({ display, layout, windowHeight }) {
   );
   const desiredStageWidth = widestMode + STAGE_SIZE.islandLeft * 2 + 8;
   const stageWidth = Math.min(
-    display.bounds.width - STAGE_SIZE.left * 2,
+    horizontalArea.width - STAGE_SIZE.left * 2,
     Math.max(ISLAND_SIZES.idle.width + 4, desiredStageWidth)
   );
   const boundsBottom = display.bounds.y + display.bounds.height;
   const position =
     layout === "top-center"
       ? {
-          x: Math.round(display.bounds.x + (display.bounds.width - stageWidth) / 2),
+          x: Math.round(horizontalArea.x + (horizontalArea.width - stageWidth) / 2),
           y: Math.round(display.bounds.y + STAGE_SIZE.top - STAGE_SIZE.islandTop)
         }
       : {
-          x: Math.round(display.bounds.x + STAGE_SIZE.left - STAGE_SIZE.islandLeft),
+          x: Math.round(horizontalArea.x + STAGE_SIZE.left - STAGE_SIZE.islandLeft),
           y: Math.round(boundsBottom - windowHeight - STAGE_SIZE.bottom + STAGE_SIZE.islandBottom)
         };
 
@@ -56,18 +62,19 @@ function getMainStageMetrics({ display, layout, windowHeight }) {
 }
 
 function getSystemStageMetrics({ display, windowHeight }) {
+  const workArea = getWorkArea(display);
   const widestMode = Math.max(ISLAND_SIZES.expanded.width, ISLAND_SIZES.hover.width, ISLAND_SIZES.idle.width);
   const desiredStageWidth = widestMode + STAGE_SIZE.islandLeft * 2 + 8;
   const systemStageWidth = Math.min(
-    display.bounds.width - STAGE_SIZE.left * 2,
+    workArea.width - STAGE_SIZE.left * 2,
     Math.max(ISLAND_SIZES.idle.width + 4, desiredStageWidth)
   );
-  const boundsRight = display.bounds.x + display.bounds.width;
+  const workAreaRight = workArea.x + workArea.width;
   const boundsBottom = display.bounds.y + display.bounds.height;
 
   return {
     position: {
-      x: Math.round(boundsRight - STAGE_SIZE.left - systemStageWidth + STAGE_SIZE.islandLeft),
+      x: Math.round(workAreaRight - STAGE_SIZE.left - systemStageWidth + STAGE_SIZE.islandLeft),
       y: Math.round(boundsBottom - windowHeight - STAGE_SIZE.bottom + STAGE_SIZE.islandBottom)
     },
     systemStageWidth

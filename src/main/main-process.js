@@ -170,12 +170,7 @@ if (!hasSingleInstanceLock) {
   });
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindows();
-      return;
-    }
-
-    createWindows();
+    showExistingWindow();
   });
 
   app.on("window-all-closed", (event) => {
