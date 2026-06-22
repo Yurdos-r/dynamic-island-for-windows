@@ -29,6 +29,21 @@ export interface SystemSnapshot {
 }
 
 const TILE_COUNT = 24;
+const CPU_TILE_ALERT_PERCENT = 70;
+const MEMORY_TILE_WARN_PERCENT = 70;
+const MEMORY_TILE_ALERT_PERCENT = 85;
+
+type TileThresholdMode = "above" | "atOrAbove";
+type TileThresholdFill = "band" | "active";
+
+interface TileMeterThresholds {
+  warnPercent?: number;
+  alertPercent?: number;
+  warnMode?: TileThresholdMode;
+  alertMode?: TileThresholdMode;
+  warnFill?: TileThresholdFill;
+  alertFill?: TileThresholdFill;
+}
 
 export const EMPTY_SYSTEM_SNAPSHOT: SystemSnapshot = {
   available: false,
@@ -47,6 +62,43 @@ export const EMPTY_SYSTEM_SNAPSHOT: SystemSnapshot = {
 
 function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+}
+
+function getTileAlertStartIndex(alertPercent: number) {
+  return Math.max(0, Math.min(TILE_COUNT - 1, Math.floor((clampPercent(alertPercent) / 100) * TILE_COUNT)));
+}
+
+function isThresholdReached(percent: number, threshold: number | undefined, mode: TileThresholdMode) {
+  if (typeof threshold !== "number") {
+    return false;
+  }
+
+  return mode === "atOrAbove" ? percent >= threshold : percent > threshold;
+}
+
+function normalizeTileThresholds(thresholds: number | TileMeterThresholds = {}): TileMeterThresholds {
+  return typeof thresholds === "number" ? { alertPercent: thresholds } : thresholds;
+}
+
+export function getSystemTileMeterState(value: number, thresholds: number | TileMeterThresholds = {}) {
+  const percent = clampPercent(value);
+  const config = normalizeTileThresholds(thresholds);
+  const hasWarn = isThresholdReached(percent, config.warnPercent, config.warnMode ?? "above");
+  const hasAlert = isThresholdReached(percent, config.alertPercent, config.alertMode ?? "above");
+  const warnStartIndex = hasWarn && typeof config.warnPercent === "number" ? getTileAlertStartIndex(config.warnPercent) : TILE_COUNT;
+  const alertStartIndex =
+    hasAlert && typeof config.alertPercent === "number" ? getTileAlertStartIndex(config.alertPercent) : TILE_COUNT;
+  const thresholdActiveCount = Math.min(TILE_COUNT, Math.max(hasAlert ? alertStartIndex + 1 : 0, hasWarn ? warnStartIndex + 1 : 0));
+  const activeCount = Math.max(Math.round((percent / 100) * TILE_COUNT), thresholdActiveCount);
+
+  return {
+    percent,
+    activeCount,
+    warnStartIndex,
+    alertStartIndex,
+    hasWarn,
+    hasAlert
+  };
 }
 
 function formatUptime(totalSeconds: number) {
@@ -274,13 +326,36 @@ function setBar(root: ParentNode, field: string, value: number) {
   });
 }
 
-function setTileMeter(root: ParentNode, field: string, value: number) {
-  const activeCount = Math.round((clampPercent(value) / 100) * TILE_COUNT);
+function setTileMeter(root: ParentNode, field: string, value: number, thresholds?: number | TileMeterThresholds) {
+  const config = normalizeTileThresholds(thresholds);
+  const meter = getSystemTileMeterState(value, thresholds);
 
   root.querySelectorAll<HTMLElement>(`[data-system-field="${field}"]`).forEach((grid) => {
-    grid.dataset.value = String(clampPercent(value));
+    grid.dataset.value = String(meter.percent);
+    grid.dataset.warn = meter.hasWarn ? "true" : "false";
+    grid.dataset.alert = meter.hasAlert ? "true" : "false";
+    grid.classList.toggle("system-tile-grid--warn", meter.hasWarn && !meter.hasAlert);
+    grid.classList.toggle("system-tile-grid--alert", meter.hasAlert);
+
     grid.querySelectorAll<HTMLElement>(".system-tile").forEach((tile, index) => {
-      tile.dataset.active = index < activeCount ? "true" : "false";
+      const active = index < meter.activeCount;
+      const alertActive = active && meter.hasAlert && (config.alertFill === "active" || index >= meter.alertStartIndex);
+      const warnActive = active && meter.hasWarn && (config.warnFill === "active" || index >= meter.warnStartIndex);
+      const level =
+        alertActive
+          ? "alert"
+          : warnActive
+            ? "warn"
+            : active
+              ? "normal"
+              : "inactive";
+
+      tile.dataset.active = active ? "true" : "false";
+      tile.dataset.warn = level === "warn" ? "true" : "false";
+      tile.dataset.alert = level === "alert" ? "true" : "false";
+      tile.dataset.level = level;
+      tile.classList.toggle("system-tile--warn", level === "warn");
+      tile.classList.toggle("system-tile--alert", level === "alert");
     });
   });
 }
@@ -322,8 +397,13 @@ export function syncSystemView(root: ParentNode, snapshot: SystemSnapshot) {
   setText(root, "cpu-capsule-value", `${snapshot.cpuPercent}%`);
   setText(root, "memory-capsule-value", `${snapshot.memoryPercent}%`);
   setText(root, "gpu-capsule-value", `${snapshot.gpuPercent}%`);
-  setTileMeter(root, "cpu-capsule-tiles", snapshot.cpuPercent);
-  setTileMeter(root, "memory-capsule-tiles", snapshot.memoryPercent);
+  setTileMeter(root, "cpu-capsule-tiles", snapshot.cpuPercent, CPU_TILE_ALERT_PERCENT);
+  setTileMeter(root, "memory-capsule-tiles", snapshot.memoryPercent, {
+    warnPercent: MEMORY_TILE_WARN_PERCENT,
+    alertPercent: MEMORY_TILE_ALERT_PERCENT,
+    warnMode: "above",
+    alertMode: "atOrAbove"
+  });
   setTileMeter(root, "gpu-capsule-tiles", snapshot.gpuPercent);
   setText(root, "cpu-value", `${snapshot.cpuPercent}%`);
   setText(root, "memory-value", `${snapshot.memoryPercent}%`);

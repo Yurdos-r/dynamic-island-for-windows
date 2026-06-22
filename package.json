@@ -1,6 +1,6 @@
 {
   "name": "dynamic-island-for-windows",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A Windows-first Dynamic Island prototype inspired by Ripple.",
   "main": "src/main/main.js",
   "author": "Open Tools",

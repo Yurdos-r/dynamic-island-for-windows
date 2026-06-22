@@ -214,6 +214,28 @@
   background: #2563eb;
 }
 
+.system-tile[data-active="true"][data-level="warn"],
+.system-tile[data-active="true"].system-tile--warn,
+.system-capsule-metric .system-tile[data-active="true"][data-level="warn"],
+.system-meter .system-tile[data-active="true"][data-level="warn"],
+.system-capsule-metric.memory .system-tile[data-active="true"][data-warn="true"] {
+  background: #f59e0b;
+  box-shadow:
+    0 0 9px rgba(245, 158, 11, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.system-tile[data-active="true"][data-alert="true"],
+.system-tile[data-active="true"][data-level="alert"],
+.system-tile[data-active="true"].system-tile--alert,
+.system-capsule-metric .system-tile[data-active="true"][data-level="alert"],
+.system-meter .system-tile[data-active="true"][data-level="alert"] {
+  background: #ef4444;
+  box-shadow:
+    0 0 9px rgba(239, 68, 68, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
 .system-capsule-gauge,
 .system-meter-bar,
 .system-disk-bar {

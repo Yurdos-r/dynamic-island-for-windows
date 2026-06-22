@@ -14,11 +14,11 @@ Windows x64 版本。
 
 推荐下载：
 
-- [Windows 动态岛安装 0.1.1.exe](https://github.com/Yurdos-r/dynamic-island-for-windows/releases/download/v0.1.1/Dynamic.Island.for.Windows.Setup.0.1.1.exe)：安装程序，带开始菜单、桌面快捷方式和卸载支持。
+- [Windows 动态岛安装 0.1.2.exe](https://github.com/Yurdos-r/dynamic-island-for-windows/releases/download/v0.1.2/Dynamic.Island.for.Windows.Setup.0.1.2.exe)：安装程序，带开始菜单、桌面快捷方式和卸载支持。
 
 便携替代方案：
 
-- [Dynamic.Island.for.Windows.0.1.1.exe](https://github.com/Yurdos-r/dynamic-island-for-windows/releases/download/v0.1.1/Dynamic.Island.for.Windows.0.1.1.exe)：双击即可启动的便携构建。
+- [Dynamic.Island.for.Windows.0.1.2.exe](https://github.com/Yurdos-r/dynamic-island-for-windows/releases/download/v0.1.2/Dynamic.Island.for.Windows.0.1.2.exe)：双击即可启动的便携构建。
 
 备注：
 
@@ -128,11 +128,11 @@ Windows x64 release.
 
 Recommended download:
 
-- [Dynamic Island for Windows Setup 0.1.1.exe](https://github.com/Yurdos-r/dynamic-island-for-windows/releases/download/v0.1.1/Dynamic.Island.for.Windows.Setup.0.1.1.exe): installer with Start Menu/Desktop shortcuts and uninstall support.
+- [Dynamic Island for Windows Setup 0.1.2.exe](https://github.com/Yurdos-r/dynamic-island-for-windows/releases/download/v0.1.2/Dynamic.Island.for.Windows.Setup.0.1.2.exe): installer with Start Menu/Desktop shortcuts and uninstall support.
 
 Portable alternative:
 
-- [Dynamic.Island.for.Windows.0.1.1.exe](https://github.com/Yurdos-r/dynamic-island-for-windows/releases/download/v0.1.1/Dynamic.Island.for.Windows.0.1.1.exe): portable build that can be launched by double-clicking.
+- [Dynamic.Island.for.Windows.0.1.2.exe](https://github.com/Yurdos-r/dynamic-island-for-windows/releases/download/v0.1.2/Dynamic.Island.for.Windows.0.1.2.exe): portable build that can be launched by double-clicking.
 
 ### Features
 
