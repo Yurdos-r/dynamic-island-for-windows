@@ -75,6 +75,7 @@ function registerIpcHandlers() {
     resizeIsland: (mode) => windowManager?.resizeIsland(mode),
     applyLayout: (layout) => windowManager?.applyLayout(layout),
     applySystemMonitorEnabled: (enabled) => windowManager?.applySystemMonitorEnabled(enabled),
+    applyKeyboardLockHintsEnabled: (enabled) => windowManager?.applyKeyboardLockHintsEnabled(enabled),
     applyStartupEnabled: (enabled) => {
       const startupEnabled = applyStartupEnabled(Boolean(enabled));
       writeUiSettings({ startupEnabled });
@@ -154,6 +155,7 @@ if (!hasSingleInstanceLock) {
       taskbarPollInterval: TASKBAR_POLL_INTERVAL_MS,
       emitMediaSnapshot: (snapshot) => windowManager?.handleMediaSnapshot(snapshot),
       emitClipboardSnapshot: (snapshot) => windowManager?.handleClipboardSnapshot(snapshot),
+      emitKeyboardLockSnapshot: (snapshot) => windowManager?.handleKeyboardLockSnapshot(snapshot),
       emitPrivacySnapshot: (snapshot) => windowManager?.handlePrivacySnapshot(snapshot),
       emitSystemSnapshot: (snapshot) => windowManager?.handleSystemSnapshot(snapshot),
       emitTaskbarSnapshot: (snapshot) => windowManager?.handleTaskbarSnapshot(snapshot)

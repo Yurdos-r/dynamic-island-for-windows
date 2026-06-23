@@ -11,6 +11,7 @@ const VALID_LAYOUTS = new Set(["classic", "top-center"]);
 const DEFAULT_SETTINGS = Object.freeze({
   layout: "top-center",
   systemMonitorEnabled: true,
+  keyboardLockHintsEnabled: true,
   startupEnabled: false
 });
 
@@ -29,6 +30,10 @@ function sanitize(raw) {
 
     if (typeof raw.systemMonitorEnabled === "boolean") {
       result.systemMonitorEnabled = raw.systemMonitorEnabled;
+    }
+
+    if (typeof raw.keyboardLockHintsEnabled === "boolean") {
+      result.keyboardLockHintsEnabled = raw.keyboardLockHintsEnabled;
     }
 
     if (typeof raw.startupEnabled === "boolean") {
@@ -64,6 +69,7 @@ function writeUiSettings(patch) {
 
 module.exports = {
   DEFAULT_SETTINGS,
+  sanitizeUiSettings: sanitize,
   VALID_LAYOUTS,
   readUiSettings,
   writeUiSettings

@@ -14,7 +14,7 @@ function coerceIslandMode(mode) {
 function resolveModeForMediaState(mode, { mediaActive = false, privacyActive = false } = {}) {
   const nextMode = coerceIslandMode(mode);
 
-  if (nextMode === "clipboard" || nextMode === "clipboard-prompt" || nextMode === "system") {
+  if (nextMode === "clipboard" || nextMode === "clipboard-prompt" || nextMode === "keyboard-lock" || nextMode === "system") {
     return nextMode;
   }
 

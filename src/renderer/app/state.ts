@@ -41,6 +41,14 @@ export interface ClipboardSnapshot {
   updatedAt: number;
 }
 
+export interface KeyboardLockHint {
+  key: KeyboardLockSnapshot["key"];
+  enabled: boolean;
+  label: string;
+  statusText: string;
+  changedAt: number;
+}
+
 export const ISLAND_STATE_NAMES = {
   capsule: "胶囊",
   island: "小岛",
@@ -81,6 +89,7 @@ export const PRIVACY_PRIORITY_STAGE_SWITCH_MS = 360;
 export const PRIVACY_TO_MEDIA_IDLE_DELAY_MS = 140;
 export const MEDIA_ENTER_TRANSITION_MS = 220;
 export const MEDIA_EXIT_TRANSITION_MS = 200;
+export const KEYBOARD_LOCK_HINT_DURATION_MS = 1500;
 export const CAPSULE_APPEAR_TRANSITION_MS = 220;
 export const PRIORITY_TRANSITION_MEDIA_TO_PRIVACY = "media-to-privacy";
 export const PRIORITY_TRANSITION_PRIVACY_TO_MEDIA = "privacy-to-media";
@@ -95,7 +104,9 @@ export interface AppState {
   settingsPage: SettingsPage;
   layout: IslandLayout;
   systemMonitorEnabled: boolean;
+  keyboardLockHintsEnabled: boolean;
   startupEnabled: boolean;
+  keyboardLockHint: KeyboardLockHint | undefined;
   track: TrackState;
   progressSeconds: number;
   lyrics: LyricLine[];

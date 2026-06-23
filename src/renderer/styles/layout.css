@@ -60,6 +60,12 @@
   --island-radius: 24px;
 }
 
+#app[data-mode="keyboard-lock"] {
+  --island-width: 360px;
+  --island-height: 48px;
+  --island-radius: 24px;
+}
+
 #app[data-mode="privacy"] {
   --island-width: 360px;
   --island-height: 44px;
@@ -86,7 +92,7 @@
 
 #app[data-mode="settings"] {
   --island-width: 360px;
-  --island-height: 264px;
+  --island-height: 324px;
   --island-radius: 30px;
 }
 

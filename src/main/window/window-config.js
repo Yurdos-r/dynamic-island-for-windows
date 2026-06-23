@@ -5,9 +5,10 @@ const ISLAND_SIZES = Object.freeze({
   privacy: { width: 360, height: 44 },
   "privacy-expanded": { width: 360, height: 78 },
   hover: { width: 360, height: 78 },
+  "keyboard-lock": { width: 360, height: 48 },
   expanded: { width: 450, height: 336 },
   clipboard: { width: 450, height: 336 },
-  settings: { width: 360, height: 264 },
+  settings: { width: 360, height: 324 },
   system: { width: 360, height: 300 }
 });
 

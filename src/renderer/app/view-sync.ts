@@ -2,6 +2,7 @@ import { syncSystemView } from "../system-view";
 import { syncAppShellDataset } from "./sync/app-shell-sync";
 import { syncCardPager } from "./sync/card-pager-sync";
 import { syncClipboardSurface } from "./sync/clipboard-sync";
+import { syncKeyboardLockHint } from "./sync/keyboard-lock-sync";
 import { renderLyricsListView } from "./sync/lyrics-sync";
 import { syncMediaSurface } from "./sync/media-sync";
 import { syncPrivacyStrip } from "./sync/privacy-sync";
@@ -19,6 +20,7 @@ export function syncRendererView(context: ViewSyncContext) {
   syncMediaSurface(context);
   syncPrivacyStrip(context);
   syncClipboardSurface(context);
+  syncKeyboardLockHint(context);
   syncSettingsSurface(context);
   syncSystemView(context.app, context.systemSnapshot);
   syncCardPager(context, cardModes, cardIndex);

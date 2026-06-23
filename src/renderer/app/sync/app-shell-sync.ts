@@ -23,6 +23,8 @@ export function syncAppShellDataset(context: ViewSyncContext, cardModes: IslandM
   context.app.dataset.settingsPage = context.settingsPage;
   context.app.dataset.layout = context.layout;
   context.app.dataset.systemMonitor = context.systemMonitorEnabled ? "true" : "false";
+  context.app.dataset.keyboardLockHints = context.keyboardLockHintsEnabled ? "true" : "false";
+  context.app.dataset.keyboardLockEnabled = context.keyboardLockHint?.enabled ? "true" : "false";
   context.app.dataset.startup = context.startupEnabled ? "true" : "false";
   context.app.dataset.idleSystem = context.isIdleSystemActive() ? "true" : "false";
   context.app.dataset.systemState = context.systemSnapshot.state;

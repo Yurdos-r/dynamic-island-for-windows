@@ -3,6 +3,7 @@ const { createClipboardMonitor } = require("../clipboard");
 const { createPrivacyMonitor } = require("../privacy");
 const { createNativeTaskbarWatch } = require("../native-taskbar");
 const { createSystemMonitor } = require("../system-monitor");
+const { createKeyboardLockMonitor } = require("../keyboard-lock");
 
 function createIslandProviderOrchestrator(options = {}) {
   const logStartup = options.logStartup || (() => {});
@@ -11,6 +12,7 @@ function createIslandProviderOrchestrator(options = {}) {
   const emitPrivacySnapshot = options.emitPrivacySnapshot || (() => {});
   const emitSystemSnapshot = options.emitSystemSnapshot || (() => {});
   const emitTaskbarSnapshot = options.emitTaskbarSnapshot || (() => {});
+  const emitKeyboardLockSnapshot = options.emitKeyboardLockSnapshot || (() => {});
 
   const mediaController = createMediaController({
     logStartup,
@@ -23,6 +25,10 @@ function createIslandProviderOrchestrator(options = {}) {
   const privacyMonitor = createPrivacyMonitor({
     logStartup,
     emitSnapshot: emitPrivacySnapshot
+  });
+  const keyboardLockMonitor = createKeyboardLockMonitor({
+    logStartup,
+    emitSnapshot: emitKeyboardLockSnapshot
   });
   const systemMonitor = createSystemMonitor({
     logStartup,
@@ -38,6 +44,7 @@ function createIslandProviderOrchestrator(options = {}) {
     mediaController.start();
     clipboardMonitor.start();
     privacyMonitor.start();
+    keyboardLockMonitor.start();
   }
 
   function syncSystemMonitorRunning(enabled) {
@@ -56,6 +63,7 @@ function createIslandProviderOrchestrator(options = {}) {
     mediaController.stop();
     clipboardMonitor.stop();
     privacyMonitor.stop();
+    keyboardLockMonitor.stop();
     systemMonitor.stop();
     taskbarWatch.stop();
   }

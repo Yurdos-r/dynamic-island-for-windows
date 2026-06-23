@@ -59,9 +59,11 @@ export function createPrivacyUpdateHandler(options: IslandUpdateHandlerOptions) 
         runtime.mode === "clipboard" ||
         runtime.mode === "clipboard-prompt" ||
         (previousPrivacyActive && runtime.mode === "expanded");
+      const privacyReturnMode =
+        runtime.mode === "keyboard-lock" ? runtime.keyboardLockReturnMode || "idle" : runtime.mode;
 
       if (!previousPrivacyActive && runtime.mode !== "privacy" && runtime.mode !== "privacy-expanded" && runtime.mode !== "peek") {
-        runtime.privacyReturnMode = runtime.mode;
+        runtime.privacyReturnMode = privacyReturnMode;
       }
 
       if (shouldHandOffFromMedia) {

@@ -76,6 +76,17 @@ function setMode(nextMode: IslandMode) {
   queueSync();
 }
 
+function restoreClassicSystemSurface() {
+  clearCollapseTimer();
+  mode = "idle";
+  app.dataset.role = "system";
+  app.dataset.mode = mode;
+  app.hidden = false;
+  app.style.removeProperty("opacity");
+  void window.island?.resize("idle");
+  queueSync();
+}
+
 app.addEventListener("pointerenter", () => {
   clearCollapseTimer();
   if (mode === "idle") {
@@ -108,6 +119,12 @@ window.island?.onModeRequest((requestedMode) => {
 window.island?.onSystemUpdate((nextSnapshot) => {
   snapshot = normalizeSystemSnapshot(nextSnapshot);
   queueSync();
+});
+
+window.island?.onLayoutChanged((settings) => {
+  if (settings?.layout === "classic" && settings.systemMonitorEnabled !== false) {
+    restoreClassicSystemSurface();
+  }
 });
 
 renderTemplate();

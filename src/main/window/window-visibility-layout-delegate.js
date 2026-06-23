@@ -23,10 +23,6 @@ function createWindowVisibilityLayoutDelegate(options = {}) {
 
   const windowFader = createWindowFader();
 
-  function fadeWindowTo(win, target, done) {
-    windowFader.fadeTo(win, target, done);
-  }
-
   function fadeOutAndHide(win) {
     windowFader.fadeOutAndHide(win);
   }
@@ -42,10 +38,9 @@ function createWindowVisibilityLayoutDelegate(options = {}) {
   const systemWindowVisibility = createSystemWindowVisibilityManager({
     getWindow: () => state.systemWindow,
     isRendererReady: () => state.systemRendererReady,
+    logStartup,
     collapseToIdle: collapseSystemWindowToIdle,
     reposition: repositionSystemStageWindow,
-    fadeTo: fadeWindowTo,
-    showAndFadeIn,
     raise: raiseSystemWindowForPointer,
     restoreHitState: restoreSystemWindowHitState
   });
@@ -72,6 +67,10 @@ function createWindowVisibilityLayoutDelegate(options = {}) {
     setSystemMonitorEnabledValue: (value) => {
       state.systemMonitorEnabled = value;
     },
+    getKeyboardLockHintsEnabled: () => state.keyboardLockHintsEnabled,
+    setKeyboardLockHintsEnabledValue: (value) => {
+      state.keyboardLockHintsEnabled = value;
+    },
     getTaskbarVisible: () => state.taskbarVisible,
     setTaskbarVisibleValue: (value) => {
       state.taskbarVisible = value;
@@ -92,11 +91,11 @@ function createWindowVisibilityLayoutDelegate(options = {}) {
   });
 
   return {
+    applyKeyboardLockHintsEnabled: layoutTaskbarPolicy.applyKeyboardLockHintsEnabled,
     applyLayout: layoutTaskbarPolicy.applyLayout,
     applySystemMonitorEnabled: layoutTaskbarPolicy.applySystemMonitorEnabled,
     applyTaskbarVisibility: layoutTaskbarPolicy.applyTaskbarVisibility,
     fadeOutAndHide,
-    fadeWindowTo,
     getUiSettings: layoutTaskbarPolicy.getUiSettings,
     hideSystemWindow,
     showAndFadeIn,

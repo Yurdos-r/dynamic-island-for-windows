@@ -189,6 +189,27 @@ export function buildSettingsLayer() {
     className: "settings-toggle-hint",
     text: "关闭后，经典布局右下角的监控胶囊与顶部居中的系统卡片都会隐藏。"
   });
+  const keyboardToggle = createElement("button", {
+    className: "settings-toggle",
+    attributes: {
+      type: "button",
+      role: "switch",
+      "aria-checked": "false",
+      "aria-label": "键盘状态提示"
+    },
+    dataset: { action: "toggle-keyboard-lock-hints" }
+  });
+  const keyboardToggleCopy = createElement("span", { className: "settings-toggle-copy" });
+  keyboardToggleCopy.append(
+    createElement("strong", { text: "键盘状态提示" }),
+    createElement("small", { text: "Caps Lock / Num Lock 变化时短暂提示" })
+  );
+  const keyboardToggleTrack = createElement("span", {
+    className: "settings-toggle-track",
+    attributes: { "aria-hidden": "true" }
+  });
+  keyboardToggleTrack.append(createElement("span", { className: "settings-toggle-thumb" }));
+  keyboardToggle.append(keyboardToggleCopy, keyboardToggleTrack);
   const startupToggle = createElement("button", {
     className: "settings-toggle",
     attributes: {
@@ -210,7 +231,7 @@ export function buildSettingsLayer() {
   });
   startupToggleTrack.append(createElement("span", { className: "settings-toggle-thumb" }));
   startupToggle.append(startupToggleCopy, startupToggleTrack);
-  monitorPage.append(buildSubHeader("系统"), monitorToggle, startupToggle, monitorHint);
+  monitorPage.append(buildSubHeader("系统"), monitorToggle, keyboardToggle, startupToggle, monitorHint);
 
   settingsLayer.append(settingsHub, appearancePage, layoutPage, monitorPage);
 

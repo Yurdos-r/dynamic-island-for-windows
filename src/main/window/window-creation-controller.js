@@ -38,6 +38,18 @@ function createWindowCreationController(options = {}) {
     throw new Error("loadRendererEntry is required to create window creation controller.");
   }
 
+  function restoreSystemWindow() {
+    if (typeof systemWindowVisibility?.show === "function") {
+      systemWindowVisibility.show();
+      return;
+    }
+
+    if (state.systemWindow && !state.systemWindow.isDestroyed()) {
+      state.systemWindow.show();
+      raiseSystemWindowForPointer(true);
+    }
+  }
+
   function createWindow() {
     if (state.mainWindow && !state.mainWindow.isDestroyed()) {
       logStartup("reuse-window", state.mainWindow.getBounds());
@@ -103,6 +115,7 @@ function createWindowCreationController(options = {}) {
           state.currentMode !== "expanded" &&
           state.currentMode !== "clipboard" &&
           state.currentMode !== "settings" &&
+          state.currentMode !== "keyboard-lock" &&
           state.currentMode !== "privacy" &&
           state.currentMode !== "privacy-expanded"
         ) {
@@ -118,10 +131,7 @@ function createWindowCreationController(options = {}) {
     if (state.systemWindow && !state.systemWindow.isDestroyed()) {
       logStartup("reuse-system-window", state.systemWindow.getBounds());
       if (systemWindowShouldShow()) {
-        unparkSystemWindow();
-        repositionSystemStageWindow();
-        state.systemWindow.show();
-        raiseSystemWindowForPointer(true);
+        restoreSystemWindow();
       }
       return state.systemWindow;
     }
@@ -143,7 +153,6 @@ function createWindowCreationController(options = {}) {
     configureBrowserWindow(state.systemWindow, { opaqueWindow });
     updateSystemNativeHitShape();
     setSystemMousePassthrough(true);
-
     registerWindowLifecycle({
       window: state.systemWindow,
       logStartup,
@@ -216,13 +225,9 @@ function createWindowCreationController(options = {}) {
 
     if (state.systemWindow && !state.systemWindow.isDestroyed()) {
       if (systemWindowShouldShow()) {
-        unparkSystemWindow();
-        repositionSystemStageWindow();
-        state.systemWindow.show();
-        raiseSystemWindowForPointer(true);
+        restoreSystemWindow();
       } else {
-        state.systemWindow.show();
-        systemWindowVisibility.parkWithoutFade();
+        systemWindowVisibility?.parkWithoutFade();
       }
     }
   }

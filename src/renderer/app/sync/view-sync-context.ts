@@ -1,4 +1,4 @@
-import type { ClipboardItem, ClipboardSnapshot, LyricLine, PrivacySnapshot, SettingsPage, TrackState } from "../state";
+import type { ClipboardItem, ClipboardSnapshot, KeyboardLockHint, LyricLine, PrivacySnapshot, SettingsPage, TrackState } from "../state";
 
 export interface ViewSyncContext {
   [key: string]: any;
@@ -26,7 +26,9 @@ export interface ViewSyncContext {
   settingsPage: SettingsPage;
   layout: IslandLayout;
   systemMonitorEnabled: boolean;
+  keyboardLockHintsEnabled: boolean;
   startupEnabled: boolean;
+  keyboardLockHint: KeyboardLockHint | undefined;
   systemSnapshot: SystemSnapshot;
   privacyExpanded: boolean;
   clipboardSnapshot: ClipboardSnapshot;

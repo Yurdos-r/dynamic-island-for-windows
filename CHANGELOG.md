@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.3 - 2026-06-23
+
+### Added
+
+- Added lightweight Caps Lock and Num Lock status hints in the main island.
+- Added a Settings toggle for keyboard lock hints.
+
+### Fixed
+
+- Fixed the classic-layout system monitor becoming hoverable/clickable but visually invisible.
+- Changed the system monitor window hide/show path to park the transparent window off-screen at opacity 1 instead of using `hide()` or `setOpacity()`.
+- Restored the right-bottom system monitor position and hit region after layout switches, taskbar visibility changes, and monitor setting changes.
+- Reduced system monitor hover blur flicker by keeping the system glass blur stable across idle, hover, and expanded states.
+
+### Tests
+
+- Added coverage for keyboard lock monitoring, renderer hint behavior, settings sanitization, hover behavior, layout restoration, and system window visibility parking.
+
 ## 0.1.2 - 2026-06-22
 
 ### Changed

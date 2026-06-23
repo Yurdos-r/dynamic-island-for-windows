@@ -12,7 +12,13 @@ interface CardAvailability {
 }
 
 export function resolveRendererModeForMediaState(nextMode: IslandMode, state: ModeResolutionState) {
-  if (nextMode === "clipboard" || nextMode === "clipboard-prompt" || nextMode === "settings" || nextMode === "system") {
+  if (
+    nextMode === "clipboard" ||
+    nextMode === "clipboard-prompt" ||
+    nextMode === "keyboard-lock" ||
+    nextMode === "settings" ||
+    nextMode === "system"
+  ) {
     return nextMode;
   }
 
@@ -58,5 +64,12 @@ export function isTransparentIdleMode(mode: IslandMode) {
 }
 
 export function isCapsuleMode(mode: IslandMode) {
-  return mode === "idle" || mode === "peek" || mode === "hover" || mode === "privacy" || mode === "clipboard-prompt";
+  return (
+    mode === "idle" ||
+    mode === "peek" ||
+    mode === "hover" ||
+    mode === "keyboard-lock" ||
+    mode === "privacy" ||
+    mode === "clipboard-prompt"
+  );
 }

@@ -1,6 +1,6 @@
 import type { RendererEventContext } from "./event-binder";
 import type { RendererRuntimeState } from "./runtime-state";
-import type { ClipboardItem, ClipboardSnapshot, LyricLine, PrivacySnapshot, SettingsPage, TrackState } from "./state";
+import type { ClipboardItem, ClipboardSnapshot, KeyboardLockHint, LyricLine, PrivacySnapshot, SettingsPage, TrackState } from "./state";
 import type { ViewSyncContext } from "./view-sync";
 
 interface ViewSyncHelpers {
@@ -78,8 +78,12 @@ export function createViewSyncContext(options: ViewSyncContextOptions): ViewSync
     set layout(value: IslandLayout) { runtime.layout = value; },
     get systemMonitorEnabled() { return runtime.systemMonitorEnabled; },
     set systemMonitorEnabled(value: boolean) { runtime.systemMonitorEnabled = value; },
+    get keyboardLockHintsEnabled() { return runtime.keyboardLockHintsEnabled; },
+    set keyboardLockHintsEnabled(value: boolean) { runtime.keyboardLockHintsEnabled = value; },
     get startupEnabled() { return runtime.startupEnabled; },
     set startupEnabled(value: boolean) { runtime.startupEnabled = value; },
+    get keyboardLockHint() { return runtime.keyboardLockHint; },
+    set keyboardLockHint(value: KeyboardLockHint | undefined) { runtime.keyboardLockHint = value; },
     get systemSnapshot() { return runtime.systemSnapshot; },
     set systemSnapshot(value: SystemSnapshot) { runtime.systemSnapshot = value; },
     get privacyExpanded() { return runtime.privacyExpanded; },
@@ -109,6 +113,7 @@ interface RendererEventActions {
   isLayout(value: unknown): value is IslandLayout;
   setLayout(layout: IslandLayout): void;
   setSystemMonitorEnabled(enabled: boolean): void;
+  setKeyboardLockHintsEnabled(enabled: boolean): void;
   setStartupEnabled(enabled: boolean): void;
   closeSettings(): void;
   closeSystemCard(): void;
@@ -168,6 +173,8 @@ export function createRendererEventContext(options: RendererEventContextOptions)
     set settingsPage(value: SettingsPage) { runtime.settingsPage = value; },
     get systemMonitorEnabled() { return runtime.systemMonitorEnabled; },
     set systemMonitorEnabled(value: boolean) { runtime.systemMonitorEnabled = value; },
+    get keyboardLockHintsEnabled() { return runtime.keyboardLockHintsEnabled; },
+    set keyboardLockHintsEnabled(value: boolean) { runtime.keyboardLockHintsEnabled = value; },
     get startupEnabled() { return runtime.startupEnabled; },
     set startupEnabled(value: boolean) { runtime.startupEnabled = value; },
     get privacyState() { return runtime.privacyState; },

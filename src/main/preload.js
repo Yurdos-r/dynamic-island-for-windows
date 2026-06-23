@@ -7,6 +7,7 @@ const ISLAND_MODE_SET = new Set([
   "privacy",
   "privacy-expanded",
   "hover",
+  "keyboard-lock",
   "expanded",
   "clipboard",
   "settings",
@@ -20,6 +21,7 @@ const IPC_CHANNELS = Object.freeze({
   getUiSettings: "island:get-ui-settings",
   setLayout: "island:set-layout",
   setSystemMonitor: "island:set-system-monitor",
+  setKeyboardLockHints: "island:set-keyboard-lock-hints",
   setStartup: "island:set-startup",
   setInteracting: "island:set-interacting",
   setMode: "island:set-mode",
@@ -35,6 +37,7 @@ const IPC_CHANNELS = Object.freeze({
   clipboardClear: "clipboard:clear",
   clipboardRemove: "clipboard:remove",
   clipboardUpdate: "clipboard:update",
+  keyboardLockUpdate: "keyboard-lock:update",
   systemUpdate: "system:update"
 });
 
@@ -62,6 +65,7 @@ contextBridge.exposeInMainWorld("island", {
   getUiSettings: () => ipcRenderer.invoke(IPC_CHANNELS.getUiSettings),
   setLayout: (layout) => ipcRenderer.invoke(IPC_CHANNELS.setLayout, safeLayout(layout)),
   setSystemMonitor: (enabled) => ipcRenderer.invoke(IPC_CHANNELS.setSystemMonitor, Boolean(enabled)),
+  setKeyboardLockHints: (enabled) => ipcRenderer.invoke(IPC_CHANNELS.setKeyboardLockHints, Boolean(enabled)),
   setStartup: (enabled) => ipcRenderer.invoke(IPC_CHANNELS.setStartup, Boolean(enabled)),
   writeClipboardText: (text) => ipcRenderer.invoke(IPC_CHANNELS.clipboardWrite, typeof text === "string" ? text : ""),
   acceptClipboardPending: (id) => ipcRenderer.invoke(IPC_CHANNELS.clipboardAcceptPending, typeof id === "string" ? id : ""),
@@ -138,6 +142,18 @@ contextBridge.exposeInMainWorld("island", {
 
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.systemUpdate, listener);
+    };
+  },
+  onKeyboardLockUpdate: (callback) => {
+    if (typeof callback !== "function") {
+      return () => {};
+    }
+
+    const listener = (_event, snapshot) => callback(snapshot);
+    ipcRenderer.on(IPC_CHANNELS.keyboardLockUpdate, listener);
+
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.keyboardLockUpdate, listener);
     };
   },
   onLayoutChanged: (callback) => {

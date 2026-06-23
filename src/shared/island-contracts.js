@@ -5,6 +5,7 @@ const ISLAND_MODES = Object.freeze([
   "privacy",
   "privacy-expanded",
   "hover",
+  "keyboard-lock",
   "expanded",
   "clipboard",
   "settings",
@@ -25,6 +26,7 @@ const IPC_CHANNELS = Object.freeze({
   getUiSettings: "island:get-ui-settings",
   setLayout: "island:set-layout",
   setSystemMonitor: "island:set-system-monitor",
+  setKeyboardLockHints: "island:set-keyboard-lock-hints",
   setStartup: "island:set-startup",
   setInteracting: "island:set-interacting",
   setMode: "island:set-mode",
@@ -40,6 +42,7 @@ const IPC_CHANNELS = Object.freeze({
   clipboardClear: "clipboard:clear",
   clipboardRemove: "clipboard:remove",
   clipboardUpdate: "clipboard:update",
+  keyboardLockUpdate: "keyboard-lock:update",
   systemUpdate: "system:update"
 });
 

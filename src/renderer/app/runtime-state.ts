@@ -1,4 +1,4 @@
-import type { ClipboardItem, ClipboardSnapshot, LyricLine, PrivacySnapshot, SettingsPage, TrackState } from "./state";
+import type { ClipboardItem, ClipboardSnapshot, KeyboardLockHint, LyricLine, PrivacySnapshot, SettingsPage, TrackState } from "./state";
 import { createDefaultTrack, createEmptyClipboardSnapshot, createEmptyPrivacySnapshot } from "./state";
 
 export interface RendererRuntimeState {
@@ -11,7 +11,11 @@ export interface RendererRuntimeState {
   settingsPage: SettingsPage;
   layout: IslandLayout;
   systemMonitorEnabled: boolean;
+  keyboardLockHintsEnabled: boolean;
   startupEnabled: boolean;
+  keyboardLockHint: KeyboardLockHint | undefined;
+  keyboardLockReturnMode: IslandMode;
+  keyboardLockTimer: number | undefined;
   systemSnapshot: SystemSnapshot;
   settingsLongPressPointerId: number | undefined;
   suppressNextClick: boolean;
@@ -83,7 +87,11 @@ export function createRendererRuntimeState(options: RendererRuntimeStateOptions)
     settingsPage: "hub",
     layout: "top-center",
     systemMonitorEnabled: true,
+    keyboardLockHintsEnabled: true,
     startupEnabled: false,
+    keyboardLockHint: undefined,
+    keyboardLockReturnMode: "idle",
+    keyboardLockTimer: undefined,
     systemSnapshot: options.systemSnapshot,
     settingsLongPressPointerId: undefined,
     suppressNextClick: false,

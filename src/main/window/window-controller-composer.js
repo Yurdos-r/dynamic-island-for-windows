@@ -212,6 +212,7 @@ function createWindowControllerComposer(options = {}) {
 
   const rendererReadiness = createRendererReadinessController({
     state,
+    getUiSettings: visibilityLayout.getUiSettings,
     logStartup,
     raiseWindowForPointer: interaction.raiseWindowForPointer,
     raiseSystemWindowForPointer: interaction.raiseSystemWindowForPointer,
@@ -238,6 +239,7 @@ function createWindowControllerComposer(options = {}) {
   }
 
   return {
+    applyKeyboardLockHintsEnabled: visibilityLayout.applyKeyboardLockHintsEnabled,
     applyLayout: visibilityLayout.applyLayout,
     applySystemMonitorEnabled: visibilityLayout.applySystemMonitorEnabled,
     assertMainFrameSender: frameInteraction.assertMainFrameSender,
@@ -249,6 +251,7 @@ function createWindowControllerComposer(options = {}) {
     getMainWindow: () => state.mainWindow,
     getUiSettings: visibilityLayout.getUiSettings,
     handleClipboardSnapshot: snapshotDispatcher.handleClipboardSnapshot,
+    handleKeyboardLockSnapshot: snapshotDispatcher.handleKeyboardLockSnapshot,
     handleMainRendererReady: rendererReadiness.handleMainRendererReady,
     handleMediaSnapshot: snapshotDispatcher.handleMediaSnapshot,
     handlePrivacySnapshot: snapshotDispatcher.handlePrivacySnapshot,

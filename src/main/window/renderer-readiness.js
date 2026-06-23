@@ -13,6 +13,10 @@ function createRendererReadinessController(options = {}) {
   const syncSystemMonitorRunning = options.syncSystemMonitorRunning || (() => {});
   const systemWindowShouldShow = options.systemWindowShouldShow || (() => false);
   const systemWindowVisibility = options.systemWindowVisibility;
+  const getUiSettings =
+    typeof options.getUiSettings === "function"
+      ? options.getUiSettings
+      : () => ({ layout: state?.layout, systemMonitorEnabled: state?.systemMonitorEnabled, keyboardLockHintsEnabled: true });
 
   if (!state) {
     throw new Error("state is required to create renderer readiness controller.");
@@ -34,10 +38,7 @@ function createRendererReadinessController(options = {}) {
 
     startHoverDetection();
     sendAvoidScale();
-    state.mainWindow.webContents.send(IPC_CHANNELS.layoutChanged, {
-      layout: state.layout,
-      systemMonitorEnabled: state.systemMonitorEnabled
-    });
+    state.mainWindow.webContents.send(IPC_CHANNELS.layoutChanged, getUiSettings());
   }
 
   function handleSystemRendererReady() {
@@ -50,10 +51,8 @@ function createRendererReadinessController(options = {}) {
     resizeSystemIsland(state.systemCurrentMode);
 
     if (state.taskbarVisible && systemWindowShouldShow()) {
-      state.systemWindow.show();
-      raiseSystemWindowForPointer(true);
+      systemWindowVisibility?.show();
     } else {
-      state.systemWindow.show();
       systemWindowVisibility?.parkWithoutFade();
     }
 

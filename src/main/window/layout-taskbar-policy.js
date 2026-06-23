@@ -6,6 +6,8 @@ function createLayoutTaskbarPolicy(options = {}) {
   const setLayoutValue = options.setLayoutValue || (() => {});
   const getSystemMonitorEnabled = options.getSystemMonitorEnabled || (() => true);
   const setSystemMonitorEnabledValue = options.setSystemMonitorEnabledValue || (() => {});
+  const getKeyboardLockHintsEnabled = options.getKeyboardLockHintsEnabled || (() => true);
+  const setKeyboardLockHintsEnabledValue = options.setKeyboardLockHintsEnabledValue || (() => {});
   const getTaskbarVisible = options.getTaskbarVisible || (() => true);
   const setTaskbarVisibleValue = options.setTaskbarVisibleValue || (() => {});
   const getMainWindow = options.getMainWindow || (() => undefined);
@@ -25,7 +27,8 @@ function createLayoutTaskbarPolicy(options = {}) {
   function getUiSettings() {
     return {
       layout: getLayout(),
-      systemMonitorEnabled: getSystemMonitorEnabled()
+      systemMonitorEnabled: getSystemMonitorEnabled(),
+      keyboardLockHintsEnabled: getKeyboardLockHintsEnabled()
     };
   }
 
@@ -117,7 +120,21 @@ function createLayoutTaskbarPolicy(options = {}) {
     return value;
   }
 
+  function applyKeyboardLockHintsEnabled(next) {
+    const value = Boolean(next);
+    if (value === getKeyboardLockHintsEnabled()) {
+      return getKeyboardLockHintsEnabled();
+    }
+
+    setKeyboardLockHintsEnabledValue(value);
+    writeUiSettings({ keyboardLockHintsEnabled: value });
+    logStartup("apply-keyboard-lock-hints", { keyboardLockHintsEnabled: value });
+    broadcastUiSettings();
+    return value;
+  }
+
   return {
+    applyKeyboardLockHintsEnabled,
     applyLayout,
     applyLayoutToWindows,
     applySystemMonitorEnabled,

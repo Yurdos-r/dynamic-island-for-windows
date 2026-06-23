@@ -98,6 +98,7 @@
 
 #app[data-mode="hover"] .island-shell,
 #app[data-mode="peek"] .island-shell,
+#app[data-mode="keyboard-lock"] .island-shell,
 #app[data-mode="privacy-expanded"] .island-shell,
 #app[data-mode="expanded"] .island-shell,
 #app[data-mode="clipboard"] .island-shell,
@@ -113,6 +114,7 @@
 
 #app[data-glass="liquid-svg"][data-mode="hover"] .island-shell,
 #app[data-glass="liquid-svg"][data-mode="peek"] .island-shell,
+#app[data-glass="liquid-svg"][data-mode="keyboard-lock"] .island-shell,
 #app[data-glass="liquid-svg"][data-mode="privacy-expanded"] .island-shell,
 #app[data-glass="liquid-svg"][data-mode="expanded"] .island-shell,
 #app[data-glass="liquid-svg"][data-mode="clipboard"] .island-shell,
@@ -129,6 +131,7 @@
 #app[data-mode="idle"] .island-shell,
 #app[data-mode="peek"] .island-shell,
 #app[data-mode="hover"] .island-shell,
+#app[data-mode="keyboard-lock"] .island-shell,
 #app[data-mode="privacy"] .island-shell,
 #app[data-mode="privacy-expanded"] .island-shell,
 #app[data-mode="clipboard-prompt"] .island-shell {
@@ -234,6 +237,7 @@
 
 #app[data-mode="hover"] .island-shell::before,
 #app[data-mode="peek"] .island-shell::before,
+#app[data-mode="keyboard-lock"] .island-shell::before,
 #app[data-mode="privacy-expanded"] .island-shell::before,
 #app[data-mode="expanded"] .island-shell::before,
 #app[data-mode="clipboard"] .island-shell::before,

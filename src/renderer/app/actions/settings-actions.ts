@@ -113,6 +113,29 @@ export function createSettingsActions(options: SettingsActionsOptions) {
     void island?.setSystemMonitor(enabled);
   }
 
+  function setKeyboardLockHintsEnabled(enabled: boolean) {
+    if (enabled === runtime.keyboardLockHintsEnabled) {
+      return;
+    }
+
+    runtime.keyboardLockHintsEnabled = enabled;
+    if (!enabled && runtime.mode === "keyboard-lock") {
+      if (runtime.keyboardLockTimer !== undefined) {
+        window.clearTimeout(runtime.keyboardLockTimer);
+        runtime.keyboardLockTimer = undefined;
+      }
+      runtime.keyboardLockHint = undefined;
+      setMode(runtime.keyboardLockReturnMode || "idle");
+    }
+    queueSync();
+    void island?.setKeyboardLockHints(enabled).then((keyboardLockHintsEnabled) => {
+      if (typeof keyboardLockHintsEnabled === "boolean" && keyboardLockHintsEnabled !== runtime.keyboardLockHintsEnabled) {
+        runtime.keyboardLockHintsEnabled = keyboardLockHintsEnabled;
+        queueSync();
+      }
+    });
+  }
+
   function setStartupEnabled(enabled: boolean) {
     if (enabled === runtime.startupEnabled) {
       return;
@@ -134,6 +157,9 @@ export function createSettingsActions(options: SettingsActionsOptions) {
     }
     if (settings && typeof settings.systemMonitorEnabled === "boolean") {
       runtime.systemMonitorEnabled = settings.systemMonitorEnabled;
+    }
+    if (settings && typeof settings.keyboardLockHintsEnabled === "boolean") {
+      runtime.keyboardLockHintsEnabled = settings.keyboardLockHintsEnabled;
     }
     if (settings && typeof settings.startupEnabled === "boolean") {
       runtime.startupEnabled = settings.startupEnabled;
@@ -236,6 +262,7 @@ export function createSettingsActions(options: SettingsActionsOptions) {
     setLayout,
     setSettingsPage,
     setStartupEnabled,
+    setKeyboardLockHintsEnabled,
     setSystemMonitorEnabled
   };
 }

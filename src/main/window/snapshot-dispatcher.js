@@ -63,6 +63,12 @@ function createWindowSnapshotDispatcher(options = {}) {
     }
   }
 
+  function handleKeyboardLockSnapshot(snapshot) {
+    if (state.keyboardLockHintsEnabled && canSendMain(state)) {
+      state.mainWindow.webContents.send(IPC_CHANNELS.keyboardLockUpdate, snapshot);
+    }
+  }
+
   function handleTaskbarSnapshot(snapshot) {
     applyTaskbarVisibility(snapshot?.visible);
 
@@ -78,6 +84,7 @@ function createWindowSnapshotDispatcher(options = {}) {
 
   return {
     handleClipboardSnapshot,
+    handleKeyboardLockSnapshot,
     handleMediaSnapshot,
     handlePrivacySnapshot,
     handleSystemSnapshot,

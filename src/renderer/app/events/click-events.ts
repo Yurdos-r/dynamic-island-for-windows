@@ -48,6 +48,11 @@ function handleSettingsClick(
     return;
   }
 
+  if (action === "toggle-keyboard-lock-hints") {
+    context.setKeyboardLockHintsEnabled(!context.keyboardLockHintsEnabled);
+    return;
+  }
+
   if (action === "toggle-startup") {
     context.setStartupEnabled(!context.startupEnabled);
     return;

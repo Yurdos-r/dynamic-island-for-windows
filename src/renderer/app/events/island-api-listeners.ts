@@ -29,6 +29,10 @@ export function registerIslandApiListeners(context: IslandApiListenerContext) {
     context.onSystemUpdate(snapshot);
   });
 
+  island?.onKeyboardLockUpdate((snapshot) => {
+    context.onKeyboardLockUpdate(snapshot);
+  });
+
   island?.onLayoutChanged((settings) => {
     context.onLayoutChanged(settings);
   });

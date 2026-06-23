@@ -116,6 +116,33 @@ export function renderIslandTemplate(context: RenderIslandTemplateContext) {
     })
   );
 
+  const keyboardLockLayer = createElement("div", {
+    className: "island-layer keyboard-lock-layer",
+    attributes: {
+      "aria-live": "polite",
+      "aria-label": "键盘状态提示"
+    }
+  });
+  const keyboardLockIcon = createElement("span", {
+    className: "keyboard-lock-icon",
+    attributes: { "aria-hidden": "true" }
+  });
+  keyboardLockIcon.append(createIcon("keyboard", "键盘"));
+  const keyboardLockCopy = createElement("span", { className: "keyboard-lock-copy" });
+  keyboardLockCopy.append(
+    createElement("strong", {
+      className: "keyboard-lock-label",
+      text: "键盘状态",
+      dataset: { field: "keyboard-lock-label" }
+    }),
+    createElement("small", {
+      className: "keyboard-lock-state",
+      text: "",
+      dataset: { field: "keyboard-lock-state" }
+    })
+  );
+  keyboardLockLayer.append(keyboardLockIcon, keyboardLockCopy);
+
   const clipboardLayer = createElement("main", {
     className: "island-layer clipboard-layer",
     attributes: { "aria-label": "剪贴板" }
@@ -270,6 +297,7 @@ export function renderIslandTemplate(context: RenderIslandTemplateContext) {
     hoverLayer,
     privacyStrip,
     clipboardPromptLayer,
+    keyboardLockLayer,
     clipboardLayer,
     expandedLayer,
     settingsLayer,

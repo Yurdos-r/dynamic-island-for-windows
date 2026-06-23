@@ -11,6 +11,7 @@ declare global {
       getUiSettings: () => Promise<UiSettings>;
       setLayout: (layout: IslandLayout) => Promise<IslandLayout>;
       setSystemMonitor: (enabled: boolean) => Promise<boolean>;
+      setKeyboardLockHints: (enabled: boolean) => Promise<boolean>;
       setStartup: (enabled: boolean) => Promise<boolean>;
       writeClipboardText: (text: string) => Promise<ClipboardWriteResult>;
       acceptClipboardPending: (id: string) => Promise<ClipboardWriteResult>;
@@ -23,11 +24,23 @@ declare global {
       onPrivacyUpdate: (callback: (snapshot: PrivacySnapshot) => void) => () => void;
       onClipboardUpdate: (callback: (snapshot: ClipboardSnapshot) => void) => () => void;
       onSystemUpdate: (callback: (snapshot: SystemSnapshot) => void) => () => void;
+      onKeyboardLockUpdate: (callback: (snapshot: KeyboardLockSnapshot) => void) => () => void;
       onLayoutChanged: (callback: (settings: UiSettings) => void) => () => void;
     };
   }
 
-  type IslandMode = "idle" | "peek" | "clipboard-prompt" | "privacy" | "privacy-expanded" | "hover" | "expanded" | "clipboard" | "settings" | "system";
+  type IslandMode =
+    | "idle"
+    | "peek"
+    | "clipboard-prompt"
+    | "privacy"
+    | "privacy-expanded"
+    | "hover"
+    | "keyboard-lock"
+    | "expanded"
+    | "clipboard"
+    | "settings"
+    | "system";
   type IslandLayout = "classic" | "top-center";
   type GlassStyle = "classic" | "liquid-css" | "liquid-svg";
   type GlassIntensity = "low" | "medium" | "high";
@@ -36,7 +49,15 @@ declare global {
   interface UiSettings {
     layout: IslandLayout;
     systemMonitorEnabled: boolean;
+    keyboardLockHintsEnabled: boolean;
     startupEnabled: boolean;
+  }
+
+  interface KeyboardLockSnapshot {
+    key: "capsLock" | "numLock";
+    enabled: boolean;
+    changedAt: number;
+    initial: boolean;
   }
 
   interface MediaControlResult {

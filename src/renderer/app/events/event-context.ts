@@ -7,6 +7,7 @@ export interface RendererEventContext {
   mode: IslandMode;
   settingsPage: SettingsPage;
   systemMonitorEnabled: boolean;
+  keyboardLockHintsEnabled: boolean;
   startupEnabled: boolean;
   privacyState: PrivacySnapshot;
   systemMediaActive: boolean;
@@ -28,6 +29,7 @@ export interface RendererEventContext {
   isLayout(value: unknown): value is IslandLayout;
   setLayout(layout: IslandLayout): void;
   setSystemMonitorEnabled(enabled: boolean): void;
+  setKeyboardLockHintsEnabled(enabled: boolean): void;
   setStartupEnabled(enabled: boolean): void;
   closeSettings(): void;
   closeSystemCard(): void;
@@ -74,6 +76,7 @@ export interface IslandApiListenerContext {
   onPrivacyUpdate(snapshot: PrivacySnapshot): void;
   onClipboardUpdate(snapshot: ClipboardSnapshot): void;
   onSystemUpdate(snapshot: SystemSnapshot): void;
+  onKeyboardLockUpdate(snapshot: KeyboardLockSnapshot): void;
   onLayoutChanged(settings: UiSettings): void;
   onPlaybackTick(): void;
 }

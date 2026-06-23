@@ -32,7 +32,12 @@ function createMainHoverController(options = {}) {
       options.updateMousePassthrough?.();
       const currentMode = options.getCurrentMode?.() || "idle";
 
-      if (currentMode === "privacy" || currentMode === "privacy-expanded" || currentMode === "clipboard-prompt") {
+      if (
+        currentMode === "privacy" ||
+        currentMode === "privacy-expanded" ||
+        currentMode === "clipboard-prompt" ||
+        currentMode === "keyboard-lock"
+      ) {
         clearTimers();
         return;
       }

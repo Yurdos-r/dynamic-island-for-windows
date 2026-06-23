@@ -124,6 +124,7 @@ registerIslandApiListeners({
   onPrivacyUpdate: islandUpdateHandlers.handlePrivacyUpdate,
   onClipboardUpdate: islandUpdateHandlers.handleClipboardUpdate,
   onSystemUpdate: islandUpdateHandlers.handleSystemUpdate,
+  onKeyboardLockUpdate: islandUpdateHandlers.handleKeyboardLockUpdate,
   onLayoutChanged: actions.applyUiSettings,
   onPlaybackTick: islandUpdateHandlers.handlePlaybackTick
 });
