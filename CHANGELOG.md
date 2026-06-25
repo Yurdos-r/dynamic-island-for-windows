@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.4 - 2026-06-25
+
+### Changed
+
+- Privacy indicators now summarize multiple simultaneous permissions together instead of showing only one primary kind.
+- Privacy detail text now lists all active permission kinds and their calling apps.
+
+### Fixed
+
+- Fixed the privacy capsule losing secondary active permission app names when camera and microphone were used at the same time.
+
+### Tests
+
+- Added coverage for multi-kind privacy snapshot normalization and combined privacy summary rendering.
+
 ## 0.1.3 - 2026-06-23
 
 ### Added

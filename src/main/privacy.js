@@ -99,8 +99,8 @@ function normalizePrivacySnapshot(rawSnapshot = {}) {
     .concat(withDisplayNames.map((item) => item.kind));
   const activeKinds = PRIVACY_KIND_PRIORITY.filter((kind) => rawKinds.includes(kind));
   const kind = PRIVACY_KIND_PRIORITY.find((candidate) => activeKinds.includes(candidate)) || "none";
-  const activeApps = withDisplayNames.filter((item) => item.kind === kind);
-  const active = kind !== "none";
+  const activeApps = withDisplayNames;
+  const active = activeKinds.length > 0;
 
   return {
     available: rawSnapshot.available !== false,

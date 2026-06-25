@@ -4,7 +4,7 @@
   left: 0;
   top: 0;
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   grid-template-rows: 1fr;
   align-items: center;
   column-gap: 10px;
@@ -61,6 +61,17 @@
 
 .privacy-indicator {
   position: relative;
+  flex: 0 0 auto;
+}
+
+.privacy-indicator-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.privacy-indicator-row .privacy-indicator {
   flex: 0 0 auto;
 }
 
@@ -150,4 +161,3 @@
   cursor: pointer;
   -webkit-app-region: no-drag;
 }
-
