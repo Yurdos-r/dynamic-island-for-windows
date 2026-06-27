@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.5 - 2026-06-27
+
+### Added
+
+- Confirmed clipboard history is now persisted to the app user data directory and restored after app or system restart.
+
+### Fixed
+
+- Deleting a clipboard history item and clearing clipboard history now update the persisted history file, so removed entries do not return after restart.
+
+### Tests
+
+- Added coverage for clipboard history restoration, durable accepted-item writes, durable deletion, and durable clearing.
+
 ## 0.1.4 - 2026-06-25
 
 ### Changed
