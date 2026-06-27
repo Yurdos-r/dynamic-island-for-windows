@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.6 - 2026-06-27
+
+### Fixed
+
+- Disabled opacity-based fade transitions for the main island window to avoid Windows transparent-layered-window redraw failures where the island becomes invisible while the hit area remains active.
+- Kept the system monitor window on its existing off-screen parking visibility path.
+
+### Tests
+
+- Added coverage to ensure main-window show/hide no longer fades opacity to zero.
+
 ## 0.1.5 - 2026-06-27
 
 ### Added

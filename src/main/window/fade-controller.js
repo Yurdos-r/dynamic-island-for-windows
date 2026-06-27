@@ -51,11 +51,8 @@ function createWindowFader() {
       return;
     }
 
-    fadeTo(win, 0, () => {
-      if (win && !win.isDestroyed()) {
-        win.hide();
-      }
-    });
+    clear(win);
+    win.hide();
   }
 
   function showAndFadeIn(win, raise, onShown) {
@@ -63,7 +60,7 @@ function createWindowFader() {
       return;
     }
 
-    win.setOpacity(0);
+    clear(win);
     if (!win.isVisible()) {
       win.show();
     }
@@ -73,7 +70,6 @@ function createWindowFader() {
     if (onShown) {
       onShown();
     }
-    fadeTo(win, 1);
   }
 
   return {
