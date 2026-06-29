@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.7 - 2026-06-29
+
+### Fixed
+
+- Fixed dismissed clipboard prompts not appearing again when the same text is copied after the prompt naturally disappears.
+- Moved duplicate clipboard-text policy out of the native PowerShell helper so Windows clipboard update events for the same text still reach the main process.
+- Kept fallback polling deduped so unchanged clipboard contents do not repeatedly trigger prompts.
+
+### Tests
+
+- Added coverage for dismissed repeated native clipboard text, fallback polling dedupe, and the native helper duplicate-filter guard.
+
 ## 0.1.6 - 2026-06-27
 
 ### Fixed

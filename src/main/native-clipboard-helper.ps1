@@ -70,7 +70,6 @@ function Read-ClipboardText {
   return ""
 }
 
-$script:lastText = Read-ClipboardText
 $listener = New-Object ClipboardListenerWindow
 
 Write-JsonLine @{
@@ -83,11 +82,12 @@ Write-JsonLine @{
 $listener.add_ClipboardUpdated({
   $text = Read-ClipboardText
 
-  if ([string]::IsNullOrWhiteSpace($text) -or $text -eq $script:lastText) {
+  if ([string]::IsNullOrWhiteSpace($text)) {
     return
   }
 
-  $script:lastText = $text
+  # Report every native clipboard update. The main process owns duplicate and
+  # prompt policy so copying the same text again after dismissal can re-prompt.
   Write-JsonLine @{
     type = "clipboard"
     text = $text

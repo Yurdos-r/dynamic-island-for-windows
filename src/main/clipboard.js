@@ -137,6 +137,7 @@ function createClipboardMonitor(options = {}) {
   let nativeListener;
   let historyLoaded = false;
   let initialSnapshotEmitted = false;
+  let dismissedText = "";
   let lastText = "";
   let pendingItem;
   let items = [];
@@ -196,6 +197,7 @@ function createClipboardMonitor(options = {}) {
     }
 
     pendingItem = undefined;
+    dismissedText = "";
     logStartup("clipboard-commit", {
       length: item.text.length,
       preview: item.preview
@@ -222,12 +224,28 @@ function createClipboardMonitor(options = {}) {
   function handleIncomingText(text, source) {
     const normalizedText = normalizeClipboardText(text);
 
-    if (!normalizedText || normalizedText === lastText) {
+    if (!normalizedText) {
       return;
     }
 
+    if (normalizedText === lastText) {
+      const canRepeatDismissedNativeText = !pendingItem && source !== "fallback-poll" && normalizedText === dismissedText;
+      if (!canRepeatDismissedNativeText) {
+        return;
+      }
+    }
+
+    dismissedText = "";
     lastText = normalizedText;
     emitPendingText(normalizedText, source);
+  }
+
+  function markPendingDismissed() {
+    if (!pendingItem) {
+      return;
+    }
+
+    dismissedText = pendingItem.text === lastText ? pendingItem.text : "";
   }
 
   function poll() {
@@ -313,6 +331,7 @@ function createClipboardMonitor(options = {}) {
       return { ok: true };
     }
 
+    markPendingDismissed();
     pendingItem = undefined;
     emitSnapshot(buildSnapshot(items[0]));
     return { ok: true };

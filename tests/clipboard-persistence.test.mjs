@@ -71,6 +71,8 @@ describe("clipboard persistence", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
+
     if (tempDir) {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
@@ -153,5 +155,67 @@ describe("clipboard persistence", () => {
     expect(readHistoryFile(created.historyPath).items).toEqual([]);
 
     monitor.stop();
+  });
+
+  it("re-prompts dismissed text when the native clipboard listener sees it copied again", () => {
+    const created = createTempHistoryPath();
+    tempDir = created.dir;
+
+    const { emitNativeText, monitor, snapshots } = createStartedMonitor({ historyPath: created.historyPath });
+    emitNativeText("repeat me");
+    const firstPending = snapshots.at(-1)?.pending;
+
+    expect(firstPending?.text).toBe("repeat me");
+    expect(monitor.dismissPending(firstPending?.id).ok).toBe(true);
+    expect(snapshots.at(-1)?.pending).toBeUndefined();
+
+    emitNativeText("repeat me");
+    const secondPending = snapshots.at(-1)?.pending;
+
+    expect(secondPending?.text).toBe("repeat me");
+    expect(secondPending?.id).not.toBe(firstPending?.id);
+
+    monitor.stop();
+  });
+
+  it("keeps fallback polling from re-prompting dismissed unchanged text", async () => {
+    vi.useFakeTimers();
+
+    const created = createTempHistoryPath();
+    tempDir = created.dir;
+    let clipboardText = "";
+    const snapshots = [];
+    const monitor = createClipboardMonitor({
+      clipboardApi: {
+        readText: () => clipboardText,
+        writeText: vi.fn()
+      },
+      emitSnapshot: (snapshot) => snapshots.push(snapshot),
+      historyPath: created.historyPath,
+      platform: "linux"
+    });
+
+    monitor.start();
+    clipboardText = "repeat poll";
+    await vi.advanceTimersByTimeAsync(750);
+    const firstPending = snapshots.at(-1)?.pending;
+
+    expect(firstPending?.text).toBe("repeat poll");
+    expect(monitor.dismissPending(firstPending?.id).ok).toBe(true);
+    expect(snapshots.at(-1)?.pending).toBeUndefined();
+
+    await vi.advanceTimersByTimeAsync(750);
+
+    expect(snapshots.at(-1)?.pending).toBeUndefined();
+
+    monitor.stop();
+  });
+
+  it("does not filter repeated clipboard text inside the native helper", () => {
+    const helperScript = fs.readFileSync(path.join(process.cwd(), "src/main/native-clipboard-helper.ps1"), "utf8");
+
+    expect(helperScript).not.toMatch(/\$script:lastText/);
+    expect(helperScript).not.toMatch(/\$text\s+-eq\s+\$script:lastText/);
+    expect(helperScript).toContain('type = "clipboard"');
   });
 });
